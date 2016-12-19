@@ -160,25 +160,25 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.setHitbox = function (direction, orientation) { //Hitbox at mid-front interior, width/length = TRAILWIDTH/CYCLESPEED
 		this.hitboxX, this.hitboxY, this.hitboxLength, this.hitboxWidth;
 		if (direction === DIR.RIGHT) {
-			this.hitboxX = this.x+CYCLELENGTH-CYCLESPEED; 
-			this.hitboxY = this.y+CYCLELENGTH/2-TRAILWIDTH/2;
-			this.hitboxLength = CYCLESPEED;
+			this.hitboxX = this.x + CYCLELENGTH - CYCLELENGTH/2; 
+			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
+			this.hitboxLength = CYCLELENGTH/2;
 			this.hitboxWidth = TRAILWIDTH;
 		} else if (direction === DIR.LEFT) {
 			this.hitboxX = this.x; 
-			this.hitboxY = this.y+CYCLELENGTH/2-TRAILWIDTH/2;
-			this.hitboxLength = CYCLESPEED;
+			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
+			this.hitboxLength = CYCLELENGTH/2;
 			this.hitboxWidth = TRAILWIDTH;
 		} else if (direction === DIR.UP) {
-			this.hitboxX = this.x+CYCLELENGTH/2-TRAILWIDTH/2; 
+			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
 			this.hitboxY = this.y;
 			this.hitboxLength = TRAILWIDTH;
-			this.hitboxWidth = CYCLESPEED;
+			this.hitboxWidth = CYCLELENGTH/2;
 		} else if (direction === DIR.DOWN) {
-			this.hitboxX = this.x+CYCLELENGTH/2-TRAILWIDTH/2; 
-			this.hitboxY = this.y+CYCLELENGTH-CYCLESPEED;
+			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
+			this.hitboxY = this.y + CYCLELENGTH - CYCLELENGTH/2;
 			this.hitboxLength = TRAILWIDTH;
-			this.hitboxWidth = CYCLESPEED;
+			this.hitboxWidth = CYCLELENGTH/2;
 		}
 
 
@@ -187,8 +187,8 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 
 const drawHitbox = function(cycle) {
 	cycleCtx.fillStyle = "#FFFFFF";
-	if (cycle.orientation === ORI.HORIZONTAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, CYCLESPEED, TRAILWIDTH);
-	else if (cycle.orientation === ORI.VERTICAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, TRAILWIDTH, CYCLESPEED);
+	if (cycle.orientation === ORI.HORIZONTAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, CYCLELENGTH/2, TRAILWIDTH);
+	else if (cycle.orientation === ORI.VERTICAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, TRAILWIDTH, CYCLELENGTH/2);
 }
 
 const cycles = [];
