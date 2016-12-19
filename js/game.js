@@ -34,36 +34,12 @@ body.appendChild(menuCanvas);
 const ENTERKEY = 13;
 const ESCAPEKEY = 27;
 const OKEY = 79;
-const FONT = "Oswald";
+const FONT = "Oswald-Regular";
 
-const MAXPLAYERCOUNT = 4;
+const MAXPLAYERCOUNT = 8;
 
-const CYCLESPEED = 2;
+const CYCLESPEED = 4;
 const TRAILWIDTH = 4;
-
-const CYCLELENGTH = 20;
-const CYCLEWIDTH = 10;
-const WIDTHMARGIN = Math.abs(CYCLELENGTH - CYCLEWIDTH)/2;
-
-const VSTARTOFFSET = Math.round(cycleCanvas.height/10); //Integer Points on Canvas are more optimized
-const HSTARTOFFSET = Math.round(cycleCanvas.width/5); //Integer Points on Canvas are more optimized
-const CYCLESTARTS = [[HSTARTOFFSET,VSTARTOFFSET],
-				[HSTARTOFFSET*4,cycleCanvas.height-VSTARTOFFSET-CYCLELENGTH],
-				[HSTARTOFFSET*3,VSTARTOFFSET],
-				[HSTARTOFFSET*2,cycleCanvas.height-VSTARTOFFSET-CYCLELENGTH]];
-
-const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
-				"rgba(0,0,255,255)", //blue
-				"rgba(0,255,0,255)", //green
-				"rgba(255,255,0,255)"]; //yellow
-
-const CYCLEKEYCONTROLS = [[87,65,83,68], //wasd
-				[84,70,71,72], //tfgh
-				[73,74,75,76], //ijkl
-				[38,37,40,39]] //arrows
-
-// Mutable to reset to zero?
-let SCORES = [0,0,0,0];
 
 function Theme(name, colour, background, text, textHighlight) {
 	this.NAME = name;
@@ -86,6 +62,45 @@ const OPTIONS = {
 	DISAPPEARINGTRAILS: false
 }
 
+const CYCLELENGTH = 20;
+const CYCLEWIDTH = 10;
+const WIDTHMARGIN = Math.abs(CYCLELENGTH - CYCLEWIDTH)/2;
+
+// Actual cycle and trail are hard-coded images, this ultimately applies to just score & winning text
+const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
+				"rgba(0,0,255,255)", //blue
+				"rgba(255,223,0,255)", //yellow
+				"rgba(0,255,0,255)", //green
+				"rgba(255,165,0,255)", //orange
+				"rgba(0,255,255,255)", //cyan
+				"rgba(255,0,255,255)", //magenta
+				"rgba(119,119,119,255)"]; //grey
+
+const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
+				[84,70,71,72,89], //tfghy
+				[73,74,75,76,79], //ijklo
+				[38,37,40,39,16], //arrows/shift
+				[49,50,51,52,53], //12345
+				[54,55,56,57,48], //67890
+				[90,88,67,86,66], //zxcvb
+				[78,77,188,190,191]] //nm,./
+
+// Dynamic based on OPTIONS.PLAYERCOUNT
+function setCycleStarts() {
+	const VSTARTOFFSET = Math.round(cycleCanvas.height/10); //Integer Points on Canvas are more optimized
+	const HSTARTOFFSET = Math.round(cycleCanvas.width/(OPTIONS.PLAYERCOUNT + 1)); //Integer Points on Canvas are more optimized
+	const CYCLESTARTS = [];
+	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
+		let y = ((i % 2 === 0) ? VSTARTOFFSET : cycleCanvas.height - VSTARTOFFSET - CYCLELENGTH);
+		let x = HSTARTOFFSET * (i + 1);
+		CYCLESTARTS.push([x, y]);
+	}
+	return CYCLESTARTS;
+}
+
+// Mutable to reset to zero?
+let SCORES = [0,0,0,0,0,0,0,0];
+
 let HIGHLIGHT = 0;
 				
 let PAUSE = false;
@@ -95,7 +110,7 @@ let BUTTONPRESS = false;
 
 const MESSAGEREADY = ["Ready in...", "3", "2", "1"];
 const MESSAGEWINNER = ["Round Winner!", "Ready in...", "3", "2", "1"];
-const MESSAGECHAMPION = ["!"]
+const MESSAGECHAMPION = ["Champion!"]
 
 // Fix JavaScript mod for negative numbers
 function mod(n, m) {
@@ -131,6 +146,9 @@ Object.freeze(STATE);
 // Sounds
 // ----------------------------------------------------------------------------------------------------------------------
 
+var music = document.getElementById("music");
+if (music) music.volume = 0.4;
+
 const deathSound = new Audio("snd/soundDeath.wav");
 deathSound.volume = 0.2;
 
@@ -140,10 +158,12 @@ deathSound.volume = 0.2;
 
 function Cycle(id, x, y, colour, controls, initialDirection) { 
 	this.id = id; 
-	this.x = x; 
-	this.y = y; 
+	this.x = x; //Top Left Corner?
+	this.y = y; //Top Left Corner?
 	this.colour = colour; 
 	this.controls = controls;
+	this.boost = 1; //Multiplier
+	this.boostcharge = true; //Set to false to prevent spam
 	this.speed = CYCLESPEED;
 	this.direction = initialDirection;
 	this.directionPrev = initialDirection;
@@ -158,27 +178,21 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.turns = [[this.x+CYCLELENGTH/2, this.y+CYCLELENGTH/2]]; //Start Point
 
 	this.setHitbox = function (direction, orientation) { //Hitbox at mid-front interior, width/length = TRAILWIDTH/CYCLESPEED
-		this.hitboxX, this.hitboxY, this.hitboxLength, this.hitboxWidth;
+		this.hitboxX, this.hitboxY;
+		this.hitboxLength = CYCLELENGTH/2;
+		this.hitboxWidth = TRAILWIDTH;
 		if (direction === DIR.RIGHT) {
-			this.hitboxX = this.x + CYCLELENGTH - CYCLELENGTH/2; 
+			this.hitboxX = this.x + CYCLELENGTH/2; 
 			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
-			this.hitboxLength = CYCLELENGTH/2;
-			this.hitboxWidth = TRAILWIDTH;
 		} else if (direction === DIR.LEFT) {
 			this.hitboxX = this.x; 
 			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
-			this.hitboxLength = CYCLELENGTH/2;
-			this.hitboxWidth = TRAILWIDTH;
 		} else if (direction === DIR.UP) {
 			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
 			this.hitboxY = this.y;
-			this.hitboxLength = TRAILWIDTH;
-			this.hitboxWidth = CYCLELENGTH/2;
 		} else if (direction === DIR.DOWN) {
 			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
 			this.hitboxY = this.y + CYCLELENGTH - CYCLELENGTH/2;
-			this.hitboxLength = TRAILWIDTH;
-			this.hitboxWidth = CYCLELENGTH/2;
 		}
 
 
@@ -186,15 +200,16 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 }
 
 const drawHitbox = function(cycle) {
-	cycleCtx.fillStyle = "#FFFFFF";
-	if (cycle.orientation === ORI.HORIZONTAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, CYCLELENGTH/2, TRAILWIDTH);
-	else if (cycle.orientation === ORI.VERTICAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, TRAILWIDTH, CYCLELENGTH/2);
+	cycleCtx.fillStyle = (cycle.boostcharge ? OPTIONS.THEME.TEXT : OPTIONS.THEME.COLOUR);
+	if (cycle.orientation === ORI.HORIZONTAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, cycle.hitboxLength, cycle.hitboxWidth);
+	else if (cycle.orientation === ORI.VERTICAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, cycle.hitboxWidth, cycle.hitboxLength);
 }
 
 const cycles = [];
 
 const initializeCycles = function() {
 	cycles.length = 0; // Empties array
+	const CYCLESTARTS = setCycleStarts();
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP); //Choice to alternate Left/Right, could change
 		cycles.push(new Cycle(i, CYCLESTARTS[i][0], CYCLESTARTS[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
@@ -245,6 +260,19 @@ const getGamepad = function (id) {
 //  Movement & Collision
 // ----------------------------------------------------------------------------------------------------------------------
 
+const activateBoost = function(cycle) {
+	if (OPTIONS.BOOST && cycle.boostcharge) {
+		cycle.boost = 2;
+		cycle.boostcharge = false;
+		setTimeout(function() {
+			cycle.boost = 1;
+		}, 500);
+		setTimeout(function() {
+			cycle.boostcharge = true;
+		}, 3000);
+	}
+}
+
 const movement = function(cycle) {
 
 	// Erase Previous Drawing
@@ -288,6 +316,11 @@ const movement = function(cycle) {
 			cycle.image.src = "img/cycle" + cycle.id + "h.png";
 		}
 	}
+
+	// Last key in controls is boost
+	if (cycleControls[cycleControls.length - 1] in keysDown || gamepadControls.A === true) {
+		activateBoost(cycle);
+	}
 	
 	// Set Hitbox?
 	cycle.setHitbox(cycle.direction, cycle.orientation);
@@ -302,42 +335,42 @@ const movement = function(cycle) {
 	switch (cycle.direction) {
 		case DIR.UP:
 			cycle.x = cycle.x;
-			cycle.y = cycle.y - CYCLESPEED;
+			cycle.y = cycle.y - cycle.speed * cycle.boost;
 			lineCtx.drawImage(
 				cycle.trail, //image
 				cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, //x
 				cycle.y + CYCLELENGTH/2, //y
 				TRAILWIDTH, //length
-				CYCLESPEED); //width
+				cycle.speed * cycle.boost); //width
 			break;
 		case DIR.LEFT:
-			cycle.x = cycle.x - CYCLESPEED;
+			cycle.x = cycle.x - cycle.speed * cycle.boost;
 			cycle.y = cycle.y;
 			lineCtx.drawImage(
 				cycle.trail,
 				cycle.x + CYCLELENGTH/2,
 				cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2,
-				CYCLESPEED,
+				cycle.speed * cycle.boost,
 				TRAILWIDTH);
 			break;
 		case DIR.DOWN:
 			cycle.x = cycle.x;
-			cycle.y = cycle.y + CYCLESPEED;
+			cycle.y = cycle.y + cycle.speed * cycle.boost;
 			lineCtx.drawImage(
 				cycle.trail,
 				cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2,
-				cycle.y + CYCLELENGTH/2 - CYCLESPEED,
+				cycle.y + CYCLELENGTH/2 - cycle.speed * cycle.boost,
 				TRAILWIDTH,
-				CYCLESPEED);
+				cycle.speed * cycle.boost);
 			break;
 		case DIR.RIGHT:
-			cycle.x = cycle.x + CYCLESPEED;
+			cycle.x = cycle.x + cycle.speed * cycle.boost;
 			cycle.y = cycle.y;
 			lineCtx.drawImage(
 				cycle.trail,
-				cycle.x + CYCLELENGTH/2 - CYCLESPEED,
+				cycle.x + CYCLELENGTH/2 - cycle.speed * cycle.boost,
 				cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2,
-				CYCLESPEED,
+				cycle.speed * cycle.boost,
 				TRAILWIDTH);
 			break;
 		default:
@@ -348,9 +381,11 @@ const movement = function(cycle) {
 
 const collisionCheck = function(cycle) {
 	// Image Data is RGBαRGBαRGBα... of each pixel in selection
-	// Hitbox is (trailwidth * cyclespeed) at the very front (protruding or intruding?) of the cycle, only running into something will crash
+	// Hitbox is (trailwidth * cyclespeed) at the very front (protruding or intruding?) of the cycle
 	// Note that getImageData() & files written to cycleCanvas create a security issue, so game must be run on a server or annoying options set to allow images
-	// POTENTIAL ISSUE: Hitbox is TRAILWIDTH * CYCLESPEED = since x/y jump CYCLESPEED amount each tick, need to check all within range - if faster than CYCLELENGTH/2 this would overlap own trail being drawn
+	// Careful that Cyclespeed isn't faster than Hitbox size
+	
+	// Check Boundary Collision
 	let hitbox;
 	switch (cycle.orientation) {
 		case ORI.VERTICAL:
@@ -358,9 +393,9 @@ const collisionCheck = function(cycle) {
 				killCycle(cycle);
 			}
 			if (cycle.direction === DIR.DOWN) {
-				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.y + CYCLELENGTH, TRAILWIDTH, CYCLESPEED).data;
+				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.y + CYCLELENGTH, TRAILWIDTH, cycle.speed * cycle.boost).data;
 			} else {
-				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.y - 1, TRAILWIDTH, CYCLESPEED).data;
+				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.y - 1, TRAILWIDTH, cycle.speed * cycle.boost).data;
 			}
 			break;
 		case ORI.HORIZONTAL:
@@ -368,37 +403,26 @@ const collisionCheck = function(cycle) {
 				killCycle(cycle);
 			}
 			if (cycle.direction === DIR.RIGHT) {
-				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH, cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2, CYCLESPEED, TRAILWIDTH).data;
+				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH, cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH).data;
 			} else {
-				hitbox = lineCtx.getImageData(cycle.x - 1, cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2, CYCLESPEED, TRAILWIDTH).data;
+				hitbox = lineCtx.getImageData(cycle.x - 1, cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH).data;
 			}
 			break;
 	}
 	
-	// Check Cycle Collision First: Ugly
-	let deadcount = 0;
+	// Check Cycle Collision First
 	cycles.forEach(function(othercycle) {
-		if (othercycle.id !== cycle.id && othercycle.alive === true) {
-			if (cycle.hitboxX <= (othercycle.hitboxX + othercycle.hitboxWidth) 
-			&& othercycle.hitboxX <= (cycle.hitboxX + cycle.hitboxWidth) 
-			&& cycle.hitboxY <= (othercycle.hitboxY + othercycle.hitboxLength) 
-			&& othercycle.hitboxY <= (cycle.hitboxY + cycle.hitboxLength)) {
-				killCycle(cycle);
-				killCycle(othercycle);
-			}
-		} else if (othercycle.id !== cycle.id && othercycle.alive === false) {
-			deadcount += 1;
-			if (deadcount === cycles.length - 1) {
-				SCORES[cycle.id] += 1; // People who die on boundary at same time go to last player point...
-				if (SCORES[cycle.id] === OPTIONS.WINS) {
-					showMessage("Champion! Restarting...", cycle.colour, 3000);
-					SCORES = SCORES.map(function(value) { return value = 0; });
-				} else {
-					showTimer3Message("Winner! Ready in 3...", cycle.colour);
+		if (othercycle.id !== cycle.id) {
+			if (othercycle.alive === true) {
+				if (cycle.hitboxX <= (othercycle.hitboxX + othercycle.hitboxWidth) 
+				&& othercycle.hitboxX <= (cycle.hitboxX + cycle.hitboxWidth) 
+				&& cycle.hitboxY <= (othercycle.hitboxY + othercycle.hitboxLength) 
+				&& othercycle.hitboxY <= (cycle.hitboxY + cycle.hitboxLength)) {
+					killCycle(cycle);
+					killCycle(othercycle);
+					return;
 				}
-				RESTART = true;
-				return;
-			}
+			} 
 		}
 	});
 	
@@ -407,12 +431,38 @@ const collisionCheck = function(cycle) {
 		pixelcolour = "rgba(" + hitbox[i] + "," + hitbox[i+1] + "," + hitbox[i+2] + "," + hitbox[i+3] + ")";
 		if (pixelcolour !== "rgba(0,0,0,0)") { // rgba(0,0,0,0) is transparent black, ie. default background
 			killCycle(cycle);
-			return; //break;?
+			return;
 		}
 	}
 };
 
+const checkWinner = function() {
+	let livingCycles = [];
+	cycles.forEach(function(cycle) {
+		if (cycle.alive === true) {
+			livingCycles.push(cycle);
+		}
+	});
+	if (livingCycles.length === 1) {
+		const cycle = livingCycles.pop();
+		SCORES[cycle.id] += 1;
+		if (SCORES[cycle.id] === OPTIONS.WINS) {
+			showMessage("Champion! Restarting...", cycle.colour, 3000);
+			SCORES = SCORES.map(function(value) { return value = 0; });
+		} else {
+			showTimer3Message("Winner! Ready in 3...", cycle.colour);
+		}
+		RESTART = true;
+		return;
+	} else if (livingCycles.length === 0) {
+		showMessage("Draw", OPTIONS.THEME.TEXT, 3000);
+		RESTART = true;
+		return;
+	}
+}
+
 const killCycle = function(cycle) {
+	deathSound.currentTime = 0;
 	deathSound.play();
 	cycle.alive = false;
 	cycle.turns.push([cycle.x+CYCLELENGTH/2,cycle.y+CYCLELENGTH/2]);  // End Point
@@ -422,11 +472,11 @@ const killCycle = function(cycle) {
 const erasePlayer = function(cycle) {
 	// Traces turns and erases just player's lines
 	const turns = cycle.turns;
-	for (let i=1; i<turns.length; i+=1) {
+	for (let i = 1; i < turns.length; i += 1) {
 		if (turns[i-1][0] !== turns[i][0]) { //Horizontal Trail
-			lineCtx.clearRect(Math.min(turns[i-1][0],turns[i][0]),turns[i][1]-TRAILWIDTH/2,Math.abs(turns[i-1][0]-turns[i][0]),TRAILWIDTH); //Erase Old Pixels
+			lineCtx.clearRect(Math.min(turns[i-1][0], turns[i][0]), turns[i][1] - TRAILWIDTH/2, Math.abs(turns[i-1][0] - turns[i][0]), TRAILWIDTH); //Erase Old Pixels
 		} else { //Vertical Trail
-			lineCtx.clearRect(turns[i][0]-TRAILWIDTH/2,Math.min(turns[i-1][1],turns[i][1]),TRAILWIDTH,Math.abs(turns[i-1][1]-turns[i][1])); //Erase Old Pixels
+			lineCtx.clearRect(turns[i][0] - TRAILWIDTH/2, Math.min(turns[i-1][1], turns[i][1]), TRAILWIDTH, Math.abs(turns[i-1][1] - turns[i][1])); //Erase Old Pixels
 		}
 	}
 };
@@ -450,6 +500,8 @@ const update = function () {
 			collisionCheck(cycle);
 		}
 	});
+
+	checkWinner();
 };
 
 // Draw everything
@@ -457,12 +509,12 @@ let render = function () {
 	
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) { 
-			//cycleCtx.drawImage(cycle.image, cycle.x, cycle.y);
+			cycleCtx.drawImage(cycle.image, cycle.x, cycle.y);
 			drawHitbox(cycle);
 		}
 	});
 	
-	menuCtx.clearRect(0, 0, 200, menuCanvas.height); //Hard Coded Erase, Getting Desperate
+	menuCtx.clearRect(0, 0, 50, menuCanvas.height); //Hard Coded Erase, Getting Desperate
 	menuCtx.font = "24px " + FONT;
 	
 	menuCtx.textAlign = "left";
@@ -572,7 +624,7 @@ const unpause = function () {
 const doTitleState = function (gamestate) {
 	//Show Logo
 	const titleImage = new Image();
-	titleImage.src = "img/logo1.png";
+	titleImage.src = "img/logo2.png";
 	titleImage.addEventListener("load", function() {
 		// Centered
 		menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
