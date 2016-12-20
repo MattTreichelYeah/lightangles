@@ -36,10 +36,14 @@ const ESCAPEKEY = 27;
 const OKEY = 79;
 const FONT = "Oswald-Regular";
 
-const MAXPLAYERCOUNT = 8;
+const MAXPLAYERCOUNT = 2;
 
-const CYCLESPEED = 4;
+const CYCLESPEED = 2;
 const TRAILWIDTH = 4;
+
+let DISAPPEARTIMEOUT;
+let DISAPPEAR = false;
+const DISAPPEARTIME = 2000;
 
 function Theme(name, colour, background, text, textHighlight) {
 	this.NAME = name;
@@ -59,7 +63,7 @@ const OPTIONS = {
 	WINS: MAXPLAYERCOUNT,
 	THEME: THEMES[0],
 	BOOST: false,
-	DISAPPEARINGTRAILS: false
+	DISAPPEARINGTRAILS: true
 }
 
 const CYCLELENGTH = 20;
@@ -106,11 +110,8 @@ let HIGHLIGHT = 0;
 let PAUSE = false;
 let RESTART = true;
 let MESSAGE = false;
+let INPUTMESSAGE = false;
 let BUTTONPRESS = false;
-
-const MESSAGEREADY = ["Ready in...", "3", "2", "1"];
-const MESSAGEWINNER = ["Round Winner!", "Ready in...", "3", "2", "1"];
-const MESSAGECHAMPION = ["Champion!"]
 
 // Fix JavaScript mod for negative numbers
 function mod(n, m) {
@@ -175,7 +176,7 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.trail.src = "img/trail" + id + ".png"; 
 	
 	// Turns is used to trace path and erase on death
-	this.turns = [[this.x+CYCLELENGTH/2, this.y+CYCLELENGTH/2]]; //Start Point
+	this.turns = [[this.x + CYCLELENGTH/2, this.y + CYCLELENGTH/2]]; //Start Point
 
 	this.setHitbox = function (direction, orientation) { //Hitbox at mid-front interior, width/length = TRAILWIDTH/CYCLESPEED
 		this.hitboxX, this.hitboxY;
@@ -447,15 +448,14 @@ const checkWinner = function() {
 		const cycle = livingCycles.pop();
 		SCORES[cycle.id] += 1;
 		if (SCORES[cycle.id] === OPTIONS.WINS) {
-			showMessage("Champion! Restarting...", cycle.colour, 3000);
-			SCORES = SCORES.map(function(value) { return value = 0; });
+			showInputMessage(MESSAGECHAMPION, cycle.id);
 		} else {
-			showTimer3Message("Winner! Ready in 3...", cycle.colour);
+			showInputMessage(MESSAGEWINNER, cycle.id);
 		}
 		RESTART = true;
 		return;
 	} else if (livingCycles.length === 0) {
-		showMessage("Draw", OPTIONS.THEME.TEXT, 3000);
+		showInputMessage(MESSAGEDRAW, -1);
 		RESTART = true;
 		return;
 	}
@@ -465,7 +465,7 @@ const killCycle = function(cycle) {
 	deathSound.currentTime = 0;
 	deathSound.play();
 	cycle.alive = false;
-	cycle.turns.push([cycle.x+CYCLELENGTH/2,cycle.y+CYCLELENGTH/2]);  // End Point
+	cycle.turns.push([cycle.x + CYCLELENGTH/2, cycle.y + CYCLELENGTH/2]);  // End Point
 	erasePlayer(cycle);
 };
 
@@ -480,6 +480,67 @@ const erasePlayer = function(cycle) {
 		}
 	}
 };
+
+const triggerDisappearTrail = function() {
+	DISAPPEAR = false;
+	clearTimeout(DISAPPEARTIMEOUT);
+	DISAPPEARTIMEOUT = setTimeout(function() {
+		DISAPPEAR = true;
+	}, DISAPPEARTIME);
+}
+
+const disappearTrail = function(cycle) {
+	const turns = cycle.turns;
+	lineCtx.fillStyle = OPTIONS.THEME.TEXT;
+
+	if (turns.length > 1) {
+		lineCtx.fillStyle = "grey";
+		if (turns[0][0] < turns[1][0]) { // Right
+			lineCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			cycle.turns[0][0] = turns[0][0] + cycle.speed * cycle.boost;
+			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
+				turns.shift();
+				lineCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			}
+		} else if (turns[0][0] > turns[1][0]) { // Left
+			lineCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			cycle.turns[0][0] = turns[0][0] - cycle.speed * cycle.boost;
+			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
+				turns.shift();
+				lineCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			}
+		// Something's weirdly backwards about these two compared to Left/Right and turns.length === 1
+		} else if (turns[0][1] < turns[1][1]) { // Up
+			cycle.turns[0][1] = turns[0][1] + cycle.speed * cycle.boost;
+			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
+				turns.shift();
+				lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			}
+		} else if (turns[0][1] > turns[1][1]) { // Down
+			cycle.turns[0][1] = turns[0][1] - cycle.speed * cycle.boost;
+			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
+				turns.shift();
+				lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			}
+		}
+	} else {
+		if (cycle.direction === DIR.RIGHT) { // Right
+			lineCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			cycle.turns[0][0] = turns[0][0] + cycle.speed * cycle.boost;
+		} else if (cycle.direction === DIR.LEFT) { // Left
+			lineCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			cycle.turns[0][0] = turns[0][0] - cycle.speed * cycle.boost;
+		} else if (cycle.direction === DIR.UP) { // Up
+			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			cycle.turns[0][1] = turns[0][1] - cycle.speed * cycle.boost;
+		} else if (cycle.direction === DIR.DOWN) { // Down
+			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			cycle.turns[0][1] = turns[0][1] + cycle.speed * cycle.boost;
+		}
+	}
+}
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Rendering
@@ -500,6 +561,14 @@ const update = function () {
 			collisionCheck(cycle);
 		}
 	});
+
+	if (DISAPPEAR) {
+		cycles.forEach(function(cycle) {
+			if (cycle.alive === true) {
+				disappearTrail(cycle);
+			}
+		});
+	}
 
 	checkWinner();
 };
@@ -529,67 +598,54 @@ let render = function () {
 //  Message/Pause Overlays
 // ----------------------------------------------------------------------------------------------------------------------
 
-const showMessage = function (message, colour, time) {
-	MESSAGE = true;
+const MESSAGEREADY = "Ready?";
+const MESSAGECOUNTDOWN = ["3", "2", "1"];
+const MESSAGEWINNER = "Round Winner!";
+const MESSAGEDRAW = "Draw!";
+const MESSAGECHAMPION = "Champ!"
+
+const showInputMessage = function (message, id, variation) {
+	INPUTMESSAGE = true;
 
 	// Draw Message Box
-	menuCtx.strokeStyle = colour;
+	if (id !== -1) menuCtx.strokeStyle = cycles[id].colour;
+	else menuCtx.strokeStyle = OPTIONS.THEME.TEXT;
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.lineWidth = TRAILWIDTH * 2;
-	menuCtx.beginPath();
-	menuCtx.arc(menuCanvas.width/2, menuCanvas.height/2, 120, 0, 2 * Math.PI);
-	menuCtx.fill();
-	menuCtx.stroke();
+	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
+	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
 	
 	// Write Message
-	menuCtx.font = "24px " + FONT;
+	menuCtx.font = "30px " + FONT;
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
 	menuCtx.fillText(message, menuCanvas.width/2, menuCanvas.height/2);
+}
 
-	// Delete Message after given time
-	setTimeout(function() {
-		MESSAGE = false;
-		menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);		
-	}, time);
-};
-
-const showTimer3Message = function (initialMessage, colour) {
+const showTimeoutMessage = function (messages, variation) {
 	MESSAGE = true;
-
-	// Draw Message Box
-	menuCtx.strokeStyle = colour;
-	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
-	menuCtx.lineWidth = TRAILWIDTH * 5;
-	menuCtx.beginPath();
-	menuCtx.arc(menuCanvas.width/2, menuCanvas.height/2, 120, 0, 2 * Math.PI);
-	menuCtx.fill();
-	menuCtx.stroke();
-
-	let timer = 3;
+	
+	let timer = 0;
 	timeoutFunction = function() {
 		// Clear old text
-		menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
-		menuCtx.fill();
+		menuCtx.clearRect(menuCanvas.width/2 - 130, menuCanvas.height/2 - 60, 260, 120);
 		// Write Message
 		menuCtx.textAlign = "center";
 		menuCtx.textBaseline = "middle";
 		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-		if (timer === 3) {
-			menuCtx.fillText(initialMessage, menuCanvas.width/2, menuCanvas.height/2);
-		} else if (timer === 2) {
-			menuCtx.font = "85px " + FONT;
-			menuCtx.fillText("2", menuCanvas.width/2, menuCanvas.height/2);
-		} else if (timer === 1) {
-			menuCtx.font = "140px " + FONT;
-			menuCtx.fillText("1", menuCanvas.width/2, menuCanvas.height/2);
-		} else if (timer === 0) {
+		
+		if (timer !== messages.length) {
+			menuCtx.font = 24 * (timer + 3) + "px " + FONT;
+			menuCtx.fillText(messages[timer], menuCanvas.width/2, menuCanvas.height/2);
+		} else {
 			MESSAGE = false;
 			clearInterval(timeout);
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+			// Ugly: But always needs to trigger after timeout
+			if (OPTIONS.DISAPPEARINGTRAILS) triggerDisappearTrail();
 		}
-		timer -= 1;
+		timer += 1;
 	}
 	timeoutFunction();
 	const timeout = setInterval(timeoutFunction, 1000);
@@ -717,7 +773,7 @@ const doOptionState = function (gamestate) {
 const doGameState = function (gamestate) {
 	const gamepadControls = getGamepad(0);
 
-	if (!BUTTONPRESS && !MESSAGE) {
+	if (!BUTTONPRESS && !MESSAGE && !INPUTMESSAGE) {
 		BUTTONPRESS = true;
 		// Pause the Game
 		if (ENTERKEY in keysDown || ESCAPEKEY in keysDown || gamepadControls.Start === true) {
@@ -739,15 +795,27 @@ const doGameState = function (gamestate) {
 		if(!PAUSE) {
 			// Reset Cycles if new Round
 			if (RESTART) {
+				// Clear Scores if necessary
+				if (SCORES.includes(OPTIONS.WINS)) SCORES = SCORES.map(function(value) { return value = 0; });
 				// Show Start Message if necessary
-				if (SCORES.every(function(value) { return value === 0; })) showTimer3Message("Get Ready in 3...", OPTIONS.THEME.TEXT);
+				if (SCORES.every(function(value) { return value === 0; })) showInputMessage(MESSAGEREADY, -1);
+				
 				lineCtx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
 				cycleCtx.clearRect(0, 0, cycleCanvas.width, cycleCanvas.height);
 				initializeCycles();
+
 				RESTART = false;
 			}
 			update();
 			render();
+		}
+	} else if (INPUTMESSAGE) {
+		BUTTONPRESS = true;
+		if (ENTERKEY in keysDown || gamepadControls.A === true || gamepadControls.Start === true) {
+			INPUTMESSAGE = false;
+			if (!SCORES.includes(OPTIONS.WINS)) showTimeoutMessage(MESSAGECOUNTDOWN);
+		} else {
+			BUTTONPRESS = false;
 		}
 	} else if (Object.keys(keysDown).length === 0) { 
 		BUTTONPRESS = false;
