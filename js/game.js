@@ -536,7 +536,7 @@ const eraseTrail = function(cycle) {
 const eraseCycle = function(cycle) {
 	let deathAnimation;
 	if (cycle.orientation === ORI.VERTICAL) deathAnimation = loader.images["cycleDie" + cycle.id + "v"];
-	else if (cycle.orientation === ORI.HORIZONTAL) deathAnimation = loader.images["cycleDie" + cycle.id + "v"];
+	else if (cycle.orientation === ORI.HORIZONTAL) deathAnimation = loader.images["cycleDie" + cycle.id + "h"];
 	let i = 1;
 	const drawDeath = setInterval(function() {
 		// Erase Previous Drawing
