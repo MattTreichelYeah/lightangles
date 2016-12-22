@@ -5,3 +5,5 @@ Remaining Bugs:
 - Music loop is a bit rough (setting Audio.currentTime has a delay)
 - 8 Player controller connection issues
 - Boost & Disappearing Trail have issues at the same time - ie. while boosting the disappearing speeds up but can't round corners, lengthening your trail
+
+- Oh yeah, massive refactoring is necessary
