@@ -36,14 +36,14 @@ const ESCAPEKEY = 27;
 const OKEY = 79;
 const FONT = "Oswald-Regular";
 
-const MAXPLAYERCOUNT = 2;
+const MAXPLAYERCOUNT = 8;
 
-const CYCLESPEED = 2;
+const CYCLESPEED = 4;
 const TRAILWIDTH = 4;
 
 let DISAPPEARTIMEOUT;
 let DISAPPEAR = false;
-const DISAPPEARTIME = 2000;
+const DISAPPEARTIME = 5000;
 
 function Theme(name, colour, background, text, textHighlight) {
 	this.NAME = name;
@@ -63,7 +63,7 @@ const OPTIONS = {
 	WINS: MAXPLAYERCOUNT,
 	THEME: THEMES[0],
 	BOOST: false,
-	DISAPPEARINGTRAILS: true
+	DISAPPEARINGTRAILS: false
 }
 
 const CYCLELENGTH = 20;
@@ -102,6 +102,8 @@ function setCycleStarts() {
 	return CYCLESTARTS;
 }
 
+// LET THERE BE MUTABLE GLOBAL VARIABLES
+
 // Mutable to reset to zero?
 let SCORES = [0,0,0,0,0,0,0,0];
 
@@ -111,6 +113,8 @@ let PAUSE = false;
 let RESTART = true;
 let MESSAGE = false;
 let INPUTMESSAGE = false;
+let INPUTTER = 0;
+let READY = false;
 let BUTTONPRESS = false;
 
 // Fix JavaScript mod for negative numbers
@@ -147,11 +151,48 @@ Object.freeze(STATE);
 // Sounds
 // ----------------------------------------------------------------------------------------------------------------------
 
-var music = document.getElementById("music");
-if (music) music.volume = 0.4;
+const menuMusic = document.getElementById("menuMusic");
+const gameMusic = document.getElementById("gameMusic");
+menuMusic.volume = 1;
+gameMusic.pause();
 
-const deathSound = new Audio("snd/soundDeath.wav");
+const deathSound = new Audio("snd/explosion2.mp3");
+const optionSound = new Audio("snd/option.wav");
+const option2Sound = new Audio("snd/option2.wav");
+const countSound = new Audio("snd/countdown.wav");
+const selectSound = new Audio("snd/select.wav");
+const boostSound = new Audio("snd/boost.wav");
+const winnerSound = new Audio("snd/winner.wav");
+const drawSound = new Audio("snd/draw.wav");
+const championSound = new Audio("snd/champion.wav");
 deathSound.volume = 0.2;
+optionSound.volume = 0.6;
+option2Sound.volume = 0.6;
+
+function fadeAudio (audio, target) {
+    const fade = setInterval(function () {
+		try { //JavaScript fails at precision
+        	audio.volume -= 0.1;
+        	if (Math.abs(audio.volume - target) <= 0.1) clearInterval(fade);
+        } catch (err) {
+        	audio.volume = 0;
+        	audio.pause();
+			audio.currentTime = 0;
+            clearInterval(fade);
+        }
+    }, 100);
+}
+function startAudio (audio, target) {
+	audio.play();
+    const start = setInterval(function () {
+		try { //JavaScript fails at precision
+        	audio.volume += 0.1;
+        } catch (err) {
+        	audio.volume = 1;
+            clearInterval(start);
+        }
+    }, 10);
+}
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Game Objects
@@ -170,10 +211,9 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.directionPrev = initialDirection;
 	this.orientation = ((initialDirection === DIR.LEFT || initialDirection === DIR.RIGHT) ? ORI.HORIZONTAL : ORI.VERTICAL);
 	this.alive = true;
-	this.image = new Image();
-	this.image.src = ((initialDirection === DIR.LEFT || initialDirection === DIR.RIGHT) ? "img/cycle" + id + "h.png" : "img/cycle" + id + "v.png");
-	this.trail = new Image(); //Use pixel image for trail because lines have annoying anti-aliasing
-	this.trail.src = "img/trail" + id + ".png"; 
+	// Pixel Images used because anti-aliasing applied to drawn canvas rectangles
+	this.image = ((initialDirection === DIR.LEFT || initialDirection === DIR.RIGHT) ? loader.images["cycle" + id + "h"] : loader.images["cycle" + id + "v"]);
+	this.trail = loader.images["trail" + id];
 	
 	// Turns is used to trace path and erase on death
 	this.turns = [[this.x + CYCLELENGTH/2, this.y + CYCLELENGTH/2]]; //Start Point
@@ -201,7 +241,8 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 }
 
 const drawHitbox = function(cycle) {
-	cycleCtx.fillStyle = (cycle.boostcharge ? OPTIONS.THEME.TEXT : OPTIONS.THEME.COLOUR);
+	// I am an awful person and am using the Hitbox as a boost display for no clear reason
+	cycleCtx.fillStyle = (cycle.boostcharge ? "#FFFFFF" : cycle.colour);
 	if (cycle.orientation === ORI.HORIZONTAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, cycle.hitboxLength, cycle.hitboxWidth);
 	else if (cycle.orientation === ORI.VERTICAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, cycle.hitboxWidth, cycle.hitboxLength);
 }
@@ -241,9 +282,15 @@ const getGamepad = function (id) {
 		Start: false,
 		Back: false,
 		A: false,
-		B: false
+		B: false,
+		none: function() {
+			for (let i in this) {
+	        	if (this[i] === true) return false;
+	    	}
+	    	return true;
+	    }
 	};
-	if (gamepad !== undefined) {
+	if (gamepad) {
 		// 0.3 being makeshift deadzone
 		gamepadControls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
 		gamepadControls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
@@ -263,6 +310,7 @@ const getGamepad = function (id) {
 
 const activateBoost = function(cycle) {
 	if (OPTIONS.BOOST && cycle.boostcharge) {
+		boostSound.currentTime = 0; boostSound.play();
 		cycle.boost = 2;
 		cycle.boostcharge = false;
 		setTimeout(function() {
@@ -296,25 +344,25 @@ const movement = function(cycle) {
 		if (cycle.direction !== DIR.DOWN) { 
 			cycle.direction = DIR.UP;
 			cycle.orientation = ORI.VERTICAL;
-			cycle.image.src = "img/cycle" + cycle.id + "v.png";
+			cycle.image = loader.images["cycle" + cycle.id + "v"]
 		}
 	} else if (cycleControls[DIR.LEFT] in keysDown || gamepadControls.Left === true) {
 		if (cycle.direction !== DIR.RIGHT) {
 			cycle.direction = DIR.LEFT;
 			cycle.orientation = ORI.HORIZONTAL;
-			cycle.image.src = "img/cycle" + cycle.id + "h.png";
+			cycle.image = loader.images["cycle" + cycle.id + "h"]
 		}
 	} else if (cycleControls[DIR.DOWN] in keysDown || gamepadControls.Down === true) {
 		if (cycle.direction !== DIR.UP) { 
 			cycle.direction = DIR.DOWN;
 			cycle.orientation = ORI.VERTICAL;
-			cycle.image.src = "img/cycle" + cycle.id + "v.png";
+			cycle.image = loader.images["cycle" + cycle.id + "v"]
 		}
 	} else if (cycleControls[DIR.RIGHT] in keysDown || gamepadControls.Right === true) {
 		if (cycle.direction !== DIR.LEFT) {	
 			cycle.direction = DIR.RIGHT;
 			cycle.orientation = ORI.HORIZONTAL;
-			cycle.image.src = "img/cycle" + cycle.id + "h.png";
+			cycle.image = loader.images["cycle" + cycle.id + "h"]
 		}
 	}
 
@@ -448,13 +496,16 @@ const checkWinner = function() {
 		const cycle = livingCycles.pop();
 		SCORES[cycle.id] += 1;
 		if (SCORES[cycle.id] === OPTIONS.WINS) {
+			championSound.currentTime = 0; championSound.play();
 			showInputMessage(MESSAGECHAMPION, cycle.id);
 		} else {
+			winnerSound.currentTime = 0; winnerSound.play();
 			showInputMessage(MESSAGEWINNER, cycle.id);
 		}
 		RESTART = true;
 		return;
 	} else if (livingCycles.length === 0) {
+		drawSound.currentTime = 0; drawSound.play();
 		showInputMessage(MESSAGEDRAW, -1);
 		RESTART = true;
 		return;
@@ -462,14 +513,15 @@ const checkWinner = function() {
 }
 
 const killCycle = function(cycle) {
-	deathSound.currentTime = 0;
-	deathSound.play();
+	deathSound.currentTime = 0; deathSound.play();
+	gameMusic.playbackRate += 0.5 / MAXPLAYERCOUNT;
 	cycle.alive = false;
+	eraseCycle(cycle);
 	cycle.turns.push([cycle.x + CYCLELENGTH/2, cycle.y + CYCLELENGTH/2]);  // End Point
-	erasePlayer(cycle);
+	eraseTrail(cycle);
 };
 
-const erasePlayer = function(cycle) {
+const eraseTrail = function(cycle) {
 	// Traces turns and erases just player's lines
 	const turns = cycle.turns;
 	for (let i = 1; i < turns.length; i += 1) {
@@ -480,6 +532,27 @@ const erasePlayer = function(cycle) {
 		}
 	}
 };
+
+const eraseCycle = function(cycle) {
+	let deathAnimation;
+	if (cycle.orientation === ORI.VERTICAL) deathAnimation = loader.images["cycleDie" + cycle.id + "v"];
+	else if (cycle.orientation === ORI.HORIZONTAL) deathAnimation = loader.images["cycleDie" + cycle.id + "v"];
+	let i = 1;
+	const drawDeath = setInterval(function() {
+		// Erase Previous Drawing
+		switch (cycle.orientation) {
+			case ORI.VERTICAL:
+				cycleCtx.clearRect(cycle.x + WIDTHMARGIN, cycle.y, CYCLEWIDTH, CYCLELENGTH);
+				break;
+			case ORI.HORIZONTAL:
+				cycleCtx.clearRect(cycle.x, cycle.y + WIDTHMARGIN, CYCLELENGTH, CYCLEWIDTH);
+				break;
+		}
+		cycleCtx.drawImage(deathAnimation, (i % 2) * CYCLELENGTH, (Math.floor(i/2) % 3) * CYCLELENGTH, CYCLELENGTH, CYCLELENGTH, cycle.x, cycle.y, CYCLELENGTH, CYCLELENGTH);
+		i += 1;
+		if (i === 6) clearInterval(drawDeath);
+	}, 100);
+}
 
 const triggerDisappearTrail = function() {
 	DISAPPEAR = false;
@@ -579,7 +652,7 @@ let render = function () {
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) { 
 			cycleCtx.drawImage(cycle.image, cycle.x, cycle.y);
-			drawHitbox(cycle);
+			if (OPTIONS.BOOST) drawHitbox(cycle);
 		}
 	});
 	
@@ -604,12 +677,21 @@ const MESSAGEWINNER = "Round Winner!";
 const MESSAGEDRAW = "Draw!";
 const MESSAGECHAMPION = "Champ!"
 
-const showInputMessage = function (message, id, variation) {
+const showInputMessage = function (message, id, ready) {
 	INPUTMESSAGE = true;
+	if (ready) {
+		READY = true;
+	}
+	gameMusic.playbackRate = 1;
 
 	// Draw Message Box
-	if (id !== -1) menuCtx.strokeStyle = cycles[id].colour;
-	else menuCtx.strokeStyle = OPTIONS.THEME.TEXT;
+	if (id !== -1) {
+		menuCtx.strokeStyle = cycles[id].colour;
+		INPUTTER = id;
+	} else {
+		menuCtx.strokeStyle = OPTIONS.THEME.TEXT; 
+		INPUTTER = 0;
+	}
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.lineWidth = TRAILWIDTH * 2;
 	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
@@ -623,7 +705,7 @@ const showInputMessage = function (message, id, variation) {
 	menuCtx.fillText(message, menuCanvas.width/2, menuCanvas.height/2);
 }
 
-const showTimeoutMessage = function (messages, variation) {
+const showTimeoutMessage = function (messages) {
 	MESSAGE = true;
 	
 	let timer = 0;
@@ -636,10 +718,12 @@ const showTimeoutMessage = function (messages, variation) {
 		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
 		
 		if (timer !== messages.length) {
+			countSound.currentTime = 0; countSound.play();
 			menuCtx.font = 24 * (timer + 3) + "px " + FONT;
 			menuCtx.fillText(messages[timer], menuCanvas.width/2, menuCanvas.height/2);
 		} else {
 			MESSAGE = false;
+			startAudio(gameMusic);
 			clearInterval(timeout);
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 			// Ugly: But always needs to trigger after timeout
@@ -652,21 +736,18 @@ const showTimeoutMessage = function (messages, variation) {
 };
 
 const pause = function () {
-	const pauseOverlay = new Image(); //Need onload Event Listener
-	pauseOverlay.src = "img/pauseOverlay.png";
-	pauseOverlay.addEventListener("load", function() {
-		// Draw transparent overlay
-		menuCtx.globalAlpha = 0.7;
-		menuCtx.drawImage(pauseOverlay, 0, 0, menuCanvas.width, menuCanvas.height);
-		
-		// Write Message
-		menuCtx.globalAlpha = 1;
-		menuCtx.fillStyle = "#FFFFFF";
-		menuCtx.font = "24px " + FONT;
-		menuCtx.textAlign = "center";
-		menuCtx.textBaseline = "middle";
-		menuCtx.fillText("Press Back or [O] to return to Options", menuCanvas.width/2, menuCanvas.height/2);
-	}, false);
+	const pauseOverlay = loader.images["pauseOverlay"];
+	// Draw transparent overlay
+	menuCtx.globalAlpha = 0.7;
+	menuCtx.drawImage(pauseOverlay, 0, 0, menuCanvas.width, menuCanvas.height);
+	
+	// Write Message
+	menuCtx.globalAlpha = 1;
+	menuCtx.fillStyle = "#FFFFFF";
+	menuCtx.font = "24px " + FONT;
+	menuCtx.textAlign = "center";
+	menuCtx.textBaseline = "middle";
+	menuCtx.fillText("Press Back or [O] to return to Options", menuCanvas.width/2, menuCanvas.height/2);
 };
 
 const unpause = function () {
@@ -679,12 +760,8 @@ const unpause = function () {
 
 const doTitleState = function (gamestate) {
 	//Show Logo
-	const titleImage = new Image();
-	titleImage.src = "img/logo2.png";
-	titleImage.addEventListener("load", function() {
-		// Centered
-		menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
-	}, false);
+	const titleImage = loader.images["logo2"];
+	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
 	
 	const gamepadControls = getGamepad(0);
 
@@ -692,6 +769,7 @@ const doTitleState = function (gamestate) {
 		if (ENTERKEY in keysDown || gamepadControls.A === true || gamepadControls.Start === true) {
 			// Clear Logo on Start and move to Options
 			// BUTTONPRESS will be deactivated by Options to prevent pass-through
+			selectSound.currentTime = 0; selectSound.play();
 			BUTTONPRESS = true;
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 			gamestate = STATE.OPTION;
@@ -701,6 +779,9 @@ const doTitleState = function (gamestate) {
 };
 
 const doOptionState = function (gamestate) {
+	if (gameMusic.volume === 1) fadeAudio(gameMusic);
+	if (menuMusic.volume === 0) startAudio(menuMusic);
+
 	// Will keep redrawing every frame so need to clear
 	menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 	// Option Text Settings
@@ -731,12 +812,17 @@ const doOptionState = function (gamestate) {
 		if (ENTERKEY in keysDown || gamepadControls.A === true || gamepadControls.Start === true) {
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 			gamestate = STATE.GAME;
+			selectSound.currentTime = 0; selectSound.play();
 		// Up --> Move Highlight
 		} else if (CYCLEKEYCONTROLS[0][0] in keysDown || gamepadControls.Up === true) {
+			console.log(navigator.getGamepads());
 			HIGHLIGHT = mod((HIGHLIGHT - 1), Object.keys(OPTIONS).length);
+			optionSound.currentTime = 0; optionSound.play();
 		// Down --> Move Highlight
 		} else if (CYCLEKEYCONTROLS[0][2] in keysDown || gamepadControls.Down === true) { 
+			console.log(navigator.getGamepads());
 			HIGHLIGHT = mod((HIGHLIGHT + 1), Object.keys(OPTIONS).length);
+			optionSound.currentTime = 0; optionSound.play();
 		// Left/Right --> Change Option
 		} else if ((CYCLEKEYCONTROLS[0][1] in keysDown || gamepadControls.Left === true) 
 				|| (CYCLEKEYCONTROLS[0][3] in keysDown || gamepadControls.Right === true)) {
@@ -761,16 +847,22 @@ const doOptionState = function (gamestate) {
 					}
 					break;
 			}
+			option2Sound.currentTime = 0; option2Sound.play();
+		// Special Option: Reload Game with Controller
+		} else if (gamepadControls.B === true) {
+			window.location.reload();
 		} else {
 			BUTTONPRESS = false;
 		}
-	} else if (Object.keys(keysDown).length === 0) { 
+	} else if (Object.keys(keysDown).length === 0 && gamepadControls.none()) { 
 		BUTTONPRESS = false;
 	}
 	return(gamestate);
 };
 
 const doGameState = function (gamestate) {
+	if (menuMusic.volume === 1) fadeAudio(menuMusic);
+	// if (gameMusic.volume === 0) startAudio(gameMusic);
 	const gamepadControls = getGamepad(0);
 
 	if (!BUTTONPRESS && !MESSAGE && !INPUTMESSAGE) {
@@ -798,7 +890,7 @@ const doGameState = function (gamestate) {
 				// Clear Scores if necessary
 				if (SCORES.includes(OPTIONS.WINS)) SCORES = SCORES.map(function(value) { return value = 0; });
 				// Show Start Message if necessary
-				if (SCORES.every(function(value) { return value === 0; })) showInputMessage(MESSAGEREADY, -1);
+				showInputMessage(MESSAGEREADY, -1, true);
 				
 				lineCtx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
 				cycleCtx.clearRect(0, 0, cycleCanvas.width, cycleCanvas.height);
@@ -811,17 +903,61 @@ const doGameState = function (gamestate) {
 		}
 	} else if (INPUTMESSAGE) {
 		BUTTONPRESS = true;
-		if (ENTERKEY in keysDown || gamepadControls.A === true || gamepadControls.Start === true) {
+		const gamepadWinner = getGamepad(INPUTTER);
+		if (ENTERKEY in keysDown || gamepadWinner.A === true || gamepadWinner.Start === true) {
 			INPUTMESSAGE = false;
-			if (!SCORES.includes(OPTIONS.WINS)) showTimeoutMessage(MESSAGECOUNTDOWN);
+			if (READY) {
+				READY = false;
+				showTimeoutMessage(MESSAGECOUNTDOWN);
+			}
 		} else {
 			BUTTONPRESS = false;
 		}
-	} else if (Object.keys(keysDown).length === 0) { 
+	} else if (Object.keys(keysDown).length === 0 && gamepadControls.none()) { 
 		BUTTONPRESS = false;
 	}
 	return(gamestate);
 };
+
+// ----------------------------------------------------------------------------------------------------------------------
+//  Load
+// ----------------------------------------------------------------------------------------------------------------------
+
+const imageSources = function () {
+	const sources = [];
+	for (let i = 0; i < MAXPLAYERCOUNT; i++) {
+		sources.push("cycle" + i + "h");
+		sources.push("cycle" + i + "v");
+		sources.push("cycleDie" + i + "h");
+		sources.push("cycleDie" + i + "v");
+		sources.push("trail" + i);
+	}
+	sources.push("logo2");
+	sources.push("bgTileBlack");
+	sources.push("bgTileWhite");
+	sources.push("pauseOverlay");
+	return sources;
+}
+
+function Loader(sources) {
+	this.images = {};
+    let loadedImageCount = 0;
+
+    for (let i = 0; i < sources.length; i++){
+        var img = new Image();
+        img.src = "img/" + sources[i] + ".png";
+        img.onload = imageLoaded;
+        this.images[sources[i]] = img;
+    }
+
+    function imageLoaded() {
+        loadedImageCount++;
+        if (loadedImageCount === sources.length) {
+        	// Loading done, start application
+            main(STATE.TITLE); 
+        }
+    }
+}
 
 // ----------------------------------------------------------------------------------------------------------------------
 //  Main
@@ -844,4 +980,7 @@ const main = function (gamestate) {
 	requestAnimationFrame(function() { main(gamestate) });
 };
 
-main(STATE.TITLE);
+//main(STATE.TITLE);
+
+// Preloads and holds images, then it calls main
+const loader = new Loader(imageSources());
