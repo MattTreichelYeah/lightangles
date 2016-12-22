@@ -1,7 +1,7 @@
 Remaining Bugs:
-- Going immediately sideways breaks Disappearing Trail
-- Holding right while countdown happens or something freezes the game until let go?
+- Going immediately sideways breaks Disappearing Trail (Can't reproduce immediate sideways)
 - There's some weird collision edge cases
-- Make music loop
+- Lag in 8 Player (but only really bad at first use, before caching?)
+- Music loop is a bit rough (setting Audio.currentTime has a delay)
 - 8 Player controller connection issues
 - Boost & Disappearing Trail have issues at the same time - ie. while boosting the disappearing speeds up but can't round corners, lengthening your trail

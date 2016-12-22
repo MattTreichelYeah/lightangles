@@ -151,10 +151,9 @@ Object.freeze(STATE);
 // Sounds
 // ----------------------------------------------------------------------------------------------------------------------
 
-const menuMusic = document.getElementById("menuMusic");
-const gameMusic = document.getElementById("gameMusic");
+let menuMusic = document.getElementById("menuMusic");
+let gameMusic = document.getElementById("gameMusic");
 menuMusic.volume = 1;
-gameMusic.pause();
 
 const deathSound = new Audio("snd/explosion2.mp3");
 const optionSound = new Audio("snd/option.wav");
@@ -378,6 +377,7 @@ const movement = function(cycle) {
 	if (cycle.directionPrev !== cycle.direction) {
 		cycle.turns.push([cycle.x + CYCLELENGTH/2, cycle.y + CYCLELENGTH/2]);
 		cycle.directionPrev = cycle.direction;
+		//console.log(cycle.turns);
 	}
 
 	// Draw newest frame
@@ -781,6 +781,10 @@ const doTitleState = function (gamestate) {
 const doOptionState = function (gamestate) {
 	if (gameMusic.volume === 1) fadeAudio(gameMusic);
 	if (menuMusic.volume === 0) startAudio(menuMusic);
+	if (menuMusic.currentTime >= 208) {
+		// Unavoidable delay, but difficult to notice
+		menuMusic.currentTime = 7.25;
+	}
 
 	// Will keep redrawing every frame so need to clear
 	menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
@@ -839,6 +843,9 @@ const doOptionState = function (gamestate) {
 					break;
 				case "boolean": 
 					OPTIONS[optionValue] = !OPTIONS[optionValue]; 
+					// Awful and lazy way to make Boost & Disappearing Trails mutually exclusive (for now)
+					if (OPTIONS[optionValue] && optionValue === "BOOST") OPTIONS["DISAPPEARINGTRAILS"] = false;
+					else if (OPTIONS[optionValue] && optionValue === "DISAPPEARINGTRAILS") OPTIONS["BOOST"] = false;  
 					break;
 				case "object": 
 					if (OPTIONS[optionValue] instanceof Theme) {
@@ -862,7 +869,11 @@ const doOptionState = function (gamestate) {
 
 const doGameState = function (gamestate) {
 	if (menuMusic.volume === 1) fadeAudio(menuMusic);
-	// if (gameMusic.volume === 0) startAudio(gameMusic);
+	if (gameMusic.currentTime >= 161) {
+		// Unavoidable delay, but difficult to notice
+		gameMusic.currentTime = 7.3;
+	}
+
 	const gamepadControls = getGamepad(0);
 
 	if (!BUTTONPRESS && !MESSAGE && !INPUTMESSAGE) {
@@ -907,6 +918,7 @@ const doGameState = function (gamestate) {
 		if (ENTERKEY in keysDown || gamepadWinner.A === true || gamepadWinner.Start === true) {
 			INPUTMESSAGE = false;
 			if (READY) {
+				BUTTONPRESS = false; // Or else can freeze the game for everyone if hold down on Ready
 				READY = false;
 				showTimeoutMessage(MESSAGECOUNTDOWN);
 			}
