@@ -881,9 +881,9 @@ const doGameState = function (gamestate) {
 		// Pause the Game
 		if (ENTERKEY in keysDown || ESCAPEKEY in keysDown || gamepadControls.Start === true) {
 			PAUSE = !PAUSE;
-			if (PAUSE === true) pause(); else unpause();
+			if (PAUSE) pause(); else unpause();
 		// Go back to the Option Screen from Pause
-		} else if (PAUSE == true && (OKEY in keysDown || gamepadControls.Back === true)) {
+		} else if (PAUSE && (OKEY in keysDown || gamepadControls.Back === true)) {
 			unpause();
 			PAUSE = false;
 			RESTART = true;
