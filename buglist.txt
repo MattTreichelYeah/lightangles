@@ -1,9 +1,10 @@
 Remaining Bugs:
-- Going immediately sideways breaks Disappearing Trail (Can't reproduce immediate sideways)
-- There's some weird collision edge cases
+- Going immediately sideways breaks Disappearing Trail (Couldn't reproduce recently)
+- Boosting extends your hitbox forward in a way that could be subtle but awkward. The problem is the hitbox x and y can't be placed backwards onto their own trails to accomodate for the boost travel or it causes a suicide.
+- Pausing doesn't pause the timer for boosting, wasting your boost but probably also recharging it
 - Lag in 8 Player (but only really bad at first use, before caching?)
 - Music loop is a bit rough (setting Audio.currentTime has a delay)
-- 8 Player controller connection issues
+- 8 Player only works in FireFox
 - Boost & Disappearing Trail have issues at the same time - ie. while boosting the disappearing speeds up but can't round corners, lengthening your trail
 
 - Oh yeah, massive refactoring is necessary

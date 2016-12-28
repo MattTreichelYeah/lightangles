@@ -221,7 +221,7 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
  	//Hitbox x and y are always top left corner, length and width stay constant but drawing uses them based on orientation
 	this.setHitbox = function (direction) {
 		this.hitboxX, this.hitboxY; //Top Left Corner
-		this.hitboxLength = CYCLESPEED;
+		this.hitboxLength = this.speed * this.boost;
 		this.hitboxWidth = TRAILWIDTH;
 		if (direction === DIR.RIGHT) {
 			this.hitboxX = this.x + CYCLELENGTH/2; 
