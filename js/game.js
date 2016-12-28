@@ -199,8 +199,8 @@ function startAudio (audio, target) {
 
 function Cycle(id, x, y, colour, controls, initialDirection) { 
 	this.id = id; 
-	this.x = x; //Top Left Corner?
-	this.y = y; //Top Left Corner?
+	this.x = x; //Top Left Corner, including widthmargin
+	this.y = y; //Top Left Corner, including widthmargin
 	this.colour = colour; 
 	this.controls = controls;
 	this.boost = 1; //Multiplier
@@ -217,25 +217,25 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	// Turns is used to trace path and erase on death
 	this.turns = [[this.x + CYCLELENGTH/2, this.y + CYCLELENGTH/2]]; //Start Point
 
-	this.setHitbox = function (direction, orientation) { //Hitbox at mid-front interior, width/length = TRAILWIDTH/CYCLESPEED
-		this.hitboxX, this.hitboxY;
-		this.hitboxLength = CYCLELENGTH/2;
+ 	//Hitbox always at mid-front interior, just size of cyclespeed/trailwidth, visible with Boost setting
+ 	//Hitbox x and y are always top left corner, length and width stay constant but drawing uses them based on orientation
+	this.setHitbox = function (direction) {
+		this.hitboxX, this.hitboxY; //Top Left Corner
+		this.hitboxLength = CYCLESPEED;
 		this.hitboxWidth = TRAILWIDTH;
 		if (direction === DIR.RIGHT) {
 			this.hitboxX = this.x + CYCLELENGTH/2; 
 			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
 		} else if (direction === DIR.LEFT) {
-			this.hitboxX = this.x; 
+			this.hitboxX = this.x + CYCLELENGTH/2 - this.hitboxLength; 
 			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
 		} else if (direction === DIR.UP) {
 			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
-			this.hitboxY = this.y;
+			this.hitboxY = this.y + CYCLELENGTH/2 - this.hitboxLength;
 		} else if (direction === DIR.DOWN) {
 			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
-			this.hitboxY = this.y + CYCLELENGTH - CYCLELENGTH/2;
+			this.hitboxY = this.y + CYCLELENGTH/2;
 		}
-
-
 	}
 }
 
@@ -254,7 +254,7 @@ const initializeCycles = function() {
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP); //Choice to alternate Left/Right, could change
 		cycles.push(new Cycle(i, CYCLESTARTS[i][0], CYCLESTARTS[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
-		cycles[i].setHitbox(initialDirection, ORI.VERTICAL);
+		cycles[i].setHitbox(initialDirection);
 	}
 };
 	
@@ -370,9 +370,6 @@ const movement = function(cycle) {
 		activateBoost(cycle);
 	}
 	
-	// Set Hitbox?
-	cycle.setHitbox(cycle.direction, cycle.orientation);
-	
 	// Track turns of cycle for erasing on death
 	if (cycle.directionPrev !== cycle.direction) {
 		cycle.turns.push([cycle.x + CYCLELENGTH/2, cycle.y + CYCLELENGTH/2]);
@@ -426,6 +423,9 @@ const movement = function(cycle) {
 			cycle.x = cycle.x;
 			cycle.y = cycle.y;
 	}
+
+	// Set Hitbox?
+	cycle.setHitbox(cycle.direction);
 };
 
 const collisionCheck = function(cycle) {
@@ -438,24 +438,16 @@ const collisionCheck = function(cycle) {
 	let hitbox;
 	switch (cycle.orientation) {
 		case ORI.VERTICAL:
-			if(cycle.x < 0 || cycle.y < 0 || cycle.x + WIDTHMARGIN + CYCLEWIDTH > cycleCanvas.width || cycle.y + CYCLELENGTH > cycleCanvas.height) {
+			if (cycle.hitboxX < 0 || cycle.hitboxY < 0 || cycle.hitboxX + cycle.hitboxWidth > cycleCanvas.width || cycle.hitboxY + cycle.hitboxLength > cycleCanvas.height) {
 				killCycle(cycle);
 			}
-			if (cycle.direction === DIR.DOWN) {
-				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.y + CYCLELENGTH, TRAILWIDTH, cycle.speed * cycle.boost).data;
-			} else {
-				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.y - 1, TRAILWIDTH, cycle.speed * cycle.boost).data;
-			}
+			hitbox = lineCtx.getImageData(cycle.hitboxX, cycle.hitboxY, cycle.hitboxWidth, cycle.hitboxLength).data;
 			break;
 		case ORI.HORIZONTAL:
-			if(cycle.x < 0 || cycle.y < 0 || cycle.x + CYCLELENGTH > cycleCanvas.width || cycle.y + WIDTHMARGIN + CYCLEWIDTH > cycleCanvas.height) {
+			if (cycle.hitboxX < 0 || cycle.hitboxY < 0 || cycle.hitboxX + cycle.hitboxLength > cycleCanvas.width || cycle.hitboxY + cycle.hitboxWidth > cycleCanvas.height) {
 				killCycle(cycle);
 			}
-			if (cycle.direction === DIR.RIGHT) {
-				hitbox = lineCtx.getImageData(cycle.x + CYCLELENGTH, cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH).data;
-			} else {
-				hitbox = lineCtx.getImageData(cycle.x - 1, cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH).data;
-			}
+			hitbox = lineCtx.getImageData(cycle.hitboxX, cycle.hitboxY, cycle.hitboxLength, cycle.hitboxWidth).data;
 			break;
 	}
 	
@@ -463,10 +455,27 @@ const collisionCheck = function(cycle) {
 	cycles.forEach(function(othercycle) {
 		if (othercycle.id !== cycle.id) {
 			if (othercycle.alive === true) {
-				if (cycle.hitboxX <= (othercycle.hitboxX + othercycle.hitboxWidth) 
-				&& othercycle.hitboxX <= (cycle.hitboxX + cycle.hitboxWidth) 
-				&& cycle.hitboxY <= (othercycle.hitboxY + othercycle.hitboxLength) 
-				&& othercycle.hitboxY <= (cycle.hitboxY + cycle.hitboxLength)) {
+				// Have to do some ugly config for hitbox depending on orientation
+				let cycleWidth, cycleLength, otherWidth, otherLength;
+				if (cycle.orientation === ORI.VERTICAL) {
+					cycleWidth = cycle.hitboxX + cycle.hitboxWidth;
+					cycleLength = cycle.hitboxY + cycle.hitboxLength;
+				} else {
+					cycleWidth = cycle.hitboxX + cycle.hitboxLength;
+					cycleLength = cycle.hitboxY + cycle.hitboxWidth;
+				}
+				if (cycle.orientation === ORI.VERTICAL) {
+					otherWidth = othercycle.hitboxX + othercycle.hitboxWidth;
+					otherLength = othercycle.hitboxY + othercycle.hitboxLength;
+				} else {
+					otherWidth = othercycle.hitboxX + othercycle.hitboxLength;
+					otherLength = othercycle.hitboxY + othercycle.hitboxWidth;
+				}
+
+				if (cycle.hitboxX <= otherWidth 
+				&& othercycle.hitboxX <= cycleWidth 
+				&& cycle.hitboxY <= otherLength
+				&& othercycle.hitboxY <= cycleLength) {
 					killCycle(cycle);
 					killCycle(othercycle);
 					return;
