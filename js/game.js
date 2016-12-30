@@ -2,10 +2,18 @@
 // Create the canvas'
 // ----------------------------------------------------------------------------------------------------------------------
 
-function createCanvas() {
+const SCOREDISPLAY = 50;
+const MENUBORDER = 8;
+
+function createCanvas(menu) {
 	const canvas = document.createElement("canvas");
+	if (menu) {
+		canvas.height = window.innerHeight;
+	} else {
+		canvas.height = window.innerHeight - SCOREDISPLAY;
+		canvas.style.marginTop = SCOREDISPLAY + "px";
+	}
 	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
 	return canvas;
 }
 
@@ -15,15 +23,16 @@ function getContext(canvas) {
 	return ctx;
 }
 
-const menuCanvas = createCanvas();
+const menuCanvas = createCanvas(true);
 const menuCtx = getContext(menuCanvas);
+// Trails and Cycles seperated for easier drawing
 const cycleCanvas = createCanvas();
 const cycleCtx = getContext(cycleCanvas);
-const lineCanvas = createCanvas();
-const lineCtx = getContext(lineCanvas);
+const trailCanvas = createCanvas();
+const trailCtx = getContext(trailCanvas);
 
 const body = document.body;
-body.appendChild(lineCanvas);
+body.appendChild(trailCanvas);
 body.appendChild(cycleCanvas);
 body.appendChild(menuCanvas);
 
@@ -43,7 +52,7 @@ let TRAILWIDTH = 4;
 
 let DISAPPEARTIMEOUT;
 let DISAPPEAR = false;
-const DISAPPEARTIME = 1000;
+const DISAPPEARTIME = 5000;
 
 function Theme(name, colour, background, text, textHighlight) {
 	this.NAME = name;
@@ -242,9 +251,9 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.direction = initialDirection;
 	this.directionPrev = initialDirection;
 	this.orientation = ((this.direction === DIR.LEFT || this.direction === DIR.RIGHT) ? ORI.HORIZONTAL : ORI.VERTICAL);
-	this.xlength = ((this.orientation === ORI.HORIZONTAL) ? CYCLELENGTH : CYCLEWIDTH);
-	this.ylength = ((this.orientation === ORI.HORIZONTAL) ? CYCLEWIDTH : CYCLELENGTH);
- 	// Similar setup to cycle xlength and ylength
+	this.xLength = ((this.orientation === ORI.HORIZONTAL) ? CYCLELENGTH : CYCLEWIDTH);
+	this.yLength = ((this.orientation === ORI.HORIZONTAL) ? CYCLEWIDTH : CYCLELENGTH);
+ 	// Similar setup to cycle xLength and yLength
 	this.xhbLength = ((this.orientation === ORI.HORIZONTAL) ? this.speed * this.boost : TRAILWIDTH);
 	this.yhbLength = ((this.orientation === ORI.HORIZONTAL) ? TRAILWIDTH : this.speed * this.boost); 
 	// Pixel Images used because anti-aliasing applied to drawn canvas rectangles
@@ -359,7 +368,7 @@ const activateBoost = function(cycle) {
 const movement = function(cycle) {
 
 	// Erase previous drawing
-	cycleCtx.clearRect(cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
+	cycleCtx.clearRect(cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
 	
 	// Get relevant controls
 	const keyboard = cycle.controls;
@@ -397,7 +406,7 @@ const movement = function(cycle) {
 	if (cycle.directionPrev !== cycle.direction) {
 		// Swap these values
 		// You never go backwards so orientation always changes when direction does
-		[cycle.xlength, cycle.ylength] = [cycle.ylength, cycle.xlength];
+		[cycle.xLength, cycle.yLength] = [cycle.yLength, cycle.xLength];
 		[cycle.xhblength, cycle.yhbLength] = [cycle.yhbLength, cycle.xhbLength];
 
 		// Track turns of cycle for erasing on death
@@ -410,17 +419,17 @@ const movement = function(cycle) {
 		case DIR.UP:
 			cycle.x = cycle.x;
 			cycle.y = cycle.y - cycle.speed * cycle.boost;
-			lineCtx.drawImage(
+			trailCtx.drawImage(
 				cycle.image, //image
 				cycle.x - TRAILWIDTH/2, //x
 				cycle.y, //y
-				TRAILWIDTH, //xlength
-				cycle.speed * cycle.boost); //ylength
+				TRAILWIDTH, //xLength
+				cycle.speed * cycle.boost); //yLength
 			break;
 		case DIR.LEFT:
 			cycle.x = cycle.x - cycle.speed * cycle.boost;
 			cycle.y = cycle.y;
-			lineCtx.drawImage(
+			trailCtx.drawImage(
 				cycle.image,
 				cycle.x,
 				cycle.y - TRAILWIDTH/2,
@@ -430,7 +439,7 @@ const movement = function(cycle) {
 		case DIR.DOWN:
 			cycle.x = cycle.x;
 			cycle.y = cycle.y + cycle.speed * cycle.boost;
-			lineCtx.drawImage(
+			trailCtx.drawImage(
 				cycle.image,
 				cycle.x - TRAILWIDTH/2,
 				cycle.y - cycle.speed * cycle.boost,
@@ -440,7 +449,7 @@ const movement = function(cycle) {
 		case DIR.RIGHT:
 			cycle.x = cycle.x + cycle.speed * cycle.boost;
 			cycle.y = cycle.y;
-			lineCtx.drawImage(
+			trailCtx.drawImage(
 				cycle.image,
 				cycle.x - cycle.speed * cycle.boost,
 				cycle.y - TRAILWIDTH/2,
@@ -488,7 +497,7 @@ const collisionCheck = function(cycle) {
 	// Check Trail Collision
 	// Image Data is RGBαRGBαRGBα... of each pixel in selection
 	// Note that getImageData() & files written to cycleCanvas create a security issue, so game must be run on a server or annoying options set to allow images
-	const hitbox = lineCtx.getImageData(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength).data;
+	const hitbox = trailCtx.getImageData(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength).data;
 	for (let i = 0; i < hitbox.length; i += 4) {
 		pixelcolour = "rgba(" + hitbox[i] + "," + hitbox[i+1] + "," + hitbox[i+2] + "," + hitbox[i+3] + ")";
 		if (pixelcolour !== "rgba(0,0,0,0)") { // rgba(0,0,0,0) is transparent black, ie. default background
@@ -539,9 +548,9 @@ const eraseTrail = function(cycle) {
 	const turns = cycle.turns;
 	for (let i = 1; i < turns.length; i += 1) {
 		if (turns[i-1][0] !== turns[i][0]) { //Horizontal Trail
-			lineCtx.clearRect(Math.min(turns[i-1][0], turns[i][0]), turns[i][1] - TRAILWIDTH/2, Math.abs(turns[i-1][0] - turns[i][0]), TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(Math.min(turns[i-1][0], turns[i][0]), turns[i][1] - TRAILWIDTH/2, Math.abs(turns[i-1][0] - turns[i][0]), TRAILWIDTH); //Erase Old Pixels
 		} else { //Vertical Trail
-			lineCtx.clearRect(turns[i][0] - TRAILWIDTH/2, Math.min(turns[i-1][1], turns[i][1]), TRAILWIDTH, Math.abs(turns[i-1][1] - turns[i][1])); //Erase Old Pixels
+			trailCtx.clearRect(turns[i][0] - TRAILWIDTH/2, Math.min(turns[i-1][1], turns[i][1]), TRAILWIDTH, Math.abs(turns[i-1][1] - turns[i][1])); //Erase Old Pixels
 		}
 	}
 };
@@ -551,8 +560,8 @@ const eraseCycle = function(cycle) {
 	let i = 1;
 	const animationFrames = 6;
 	const drawDeath = setInterval(function() {
-		cycleCtx.clearRect(cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
-		cycleCtx.drawImage(deathAnimation, (i % 2) * 20, (Math.floor(i/2) % 3) * 20, cycle.xlength, cycle.ylength, cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
+		cycleCtx.clearRect(cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
+		cycleCtx.drawImage(deathAnimation, (i % 2) * 20, (Math.floor(i/2) % 3) * 20, cycle.xLength, cycle.yLength, cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
 		i += 1;
 		if (i === animationFrames) clearInterval(drawDeath);
 	}, 100);
@@ -568,52 +577,51 @@ const triggerDisappearTrail = function() {
 
 const disappearTrail = function(cycle) {
 	const turns = cycle.turns;
-	lineCtx.fillStyle = OPTIONS.THEME.TEXT;
 
 	if (turns.length > 1) {
-		lineCtx.fillStyle = "grey";
+		trailCtx.fillStyle = "grey";
 		if (turns[0][0] < turns[1][0]) { // Right
-			lineCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] + cycle.speed * cycle.boost;
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				lineCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
 			}
 		} else if (turns[0][0] > turns[1][0]) { // Left
-			lineCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] - cycle.speed * cycle.boost;
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				lineCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
 			}
 		// Something's weirdly backwards about these two compared to Left/Right and turns.length === 1
 		} else if (turns[0][1] < turns[1][1]) { // Up
 			cycle.turns[0][1] = turns[0][1] + cycle.speed * cycle.boost;
-			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			}
 		} else if (turns[0][1] > turns[1][1]) { // Down
 			cycle.turns[0][1] = turns[0][1] - cycle.speed * cycle.boost;
-			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			}
 		}
 	} else {
 		if (cycle.direction === DIR.RIGHT) { // Right
-			lineCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] + cycle.speed * cycle.boost;
 		} else if (cycle.direction === DIR.LEFT) { // Left
-			lineCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] - cycle.speed * cycle.boost;
 		} else if (cycle.direction === DIR.UP) { // Up
-			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			cycle.turns[0][1] = turns[0][1] - cycle.speed * cycle.boost;
 		} else if (cycle.direction === DIR.DOWN) { // Down
-			lineCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			cycle.turns[0][1] = turns[0][1] + cycle.speed * cycle.boost;
 		}
 	}
@@ -656,19 +664,29 @@ let render = function () {
 	//Cycle display
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) { 
-			cycleCtx.drawImage(cycle.image, cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
+			cycleCtx.drawImage(cycle.image, cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
 			if (OPTIONS.BOOST) drawHitbox(cycle);
 		}
 	});
 	
-	// Score Display
-	menuCtx.clearRect(0, 0, 50, menuCanvas.height); //Hard Coded Erase?
+	// Score Display // Not sure why repeated
+	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+	menuCtx.fillRect(0, SCOREDISPLAY - MENUBORDER, menuCanvas.width, MENUBORDER);
+	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
+	menuCtx.fillRect(0, 0, menuCanvas.width, SCOREDISPLAY - MENUBORDER);
 	menuCtx.font = "24px " + FONT;
-	menuCtx.textAlign = "left";
 	menuCtx.textBaseline = "top";
+	// Logo
+	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+	menuCtx.textAlign = "left";
+	menuCtx.fillText("LIGHT ANGLES", 10, 5)
+	menuCtx.textAlign = "right";
+	menuCtx.fillText("LIGHT ANGLES", menuCanvas.width - 10, 5)
+	// Score
+	menuCtx.textAlign = "center";
 	cycles.forEach(function(cycle) {
 		menuCtx.fillStyle = cycle.colour;
-		menuCtx.fillText(SCORES[cycle.id], 10, 10 + 30 * cycle.id);
+		menuCtx.fillText(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 30 / 2) + 30 * cycle.id, 5);
 	});
 };
 
@@ -698,7 +716,7 @@ const showInputMessage = function (message, id, ready) {
 		INPUTTER = 0;
 	}
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
-	menuCtx.lineWidth = 8;
+	menuCtx.lineWidth = MENUBORDER;
 	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
 	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
 	
@@ -721,7 +739,7 @@ const showTimeoutMessage = function (messages) {
 		menuCtx.textAlign = "center";
 		menuCtx.textBaseline = "middle";
 		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-		menuCtx.lineWidth = 8;
+		menuCtx.lineWidth = MENUBORDER;
 		
 		if (timer !== messages.length) {
 			countSound.currentTime = 0; countSound.play();
@@ -909,7 +927,7 @@ const doGameState = function (gamestate) {
 				// Show Start Message if necessary
 				showInputMessage(MESSAGEREADY, -1, true);
 				
-				lineCtx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+				trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
 				cycleCtx.clearRect(0, 0, cycleCanvas.width, cycleCanvas.height);
 				initializeCycles();
 
