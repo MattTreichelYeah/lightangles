@@ -5,6 +5,14 @@
 const SCOREDISPLAY = 50;
 const MENUBORDER = 8;
 
+// FireFox has an annoying rendering inconsistency with text baseline
+let FFTEXTOFFSETTOP = 0;
+let FFTEXTOFFSETMIDDLE = 0;
+if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+	FFTEXTOFFSETTOP = 10;
+	FFTEXTOFFSETMIDDLE = 3;
+}
+
 function createCanvas(menu) {
 	const canvas = document.createElement("canvas");
 	if (menu) {
@@ -679,14 +687,14 @@ let render = function () {
 	// Logo
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
 	menuCtx.textAlign = "left";
-	menuCtx.fillText("LIGHT ANGLES", 10, 5)
+	menuCtx.fillText("LIGHT ANGLES", 10, 5 + FFTEXTOFFSETTOP)
 	menuCtx.textAlign = "right";
-	menuCtx.fillText("LIGHT ANGLES", menuCanvas.width - 10, 5)
+	menuCtx.fillText("LIGHT ANGLES", menuCanvas.width - 10, 5 + FFTEXTOFFSETTOP)
 	// Score
 	menuCtx.textAlign = "center";
 	cycles.forEach(function(cycle) {
 		menuCtx.fillStyle = cycle.colour;
-		menuCtx.fillText(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 30 / 2) + 30 * cycle.id, 5);
+		menuCtx.fillText(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 30 / 2) + 30 * cycle.id, 5 + FFTEXTOFFSETTOP);
 	});
 };
 
@@ -725,7 +733,7 @@ const showInputMessage = function (message, id, ready) {
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillText(message, menuCanvas.width/2, menuCanvas.height/2);
+	menuCtx.fillText(message, menuCanvas.width/2, menuCanvas.height/2 + FFTEXTOFFSETMIDDLE);
 }
 
 const showTimeoutMessage = function (messages) {
@@ -744,7 +752,7 @@ const showTimeoutMessage = function (messages) {
 		if (timer !== messages.length) {
 			countSound.currentTime = 0; countSound.play();
 			menuCtx.font = 24 * (timer + 3) + "px " + FONT;
-			menuCtx.fillText(messages[timer], menuCanvas.width/2, menuCanvas.height/2);
+			menuCtx.fillText(messages[timer], menuCanvas.width/2, menuCanvas.height/2 + FFTEXTOFFSETMIDDLE);
 		} else {
 			MESSAGE = false;
 			startAudio(gameMusic);
@@ -815,7 +823,7 @@ const doOptionState = function (gamestate) {
 	// Option Text Settings
 	menuCtx.font = "24px " + FONT;
 	menuCtx.textAlign = "center";
-	menuCtx.textBaseline = "top";
+	menuCtx.textBaseline = "middle";
 
 	// Write Option Text
 	menuCtx.fillStyle = OPTIONS.THEME.TEXTALT;
