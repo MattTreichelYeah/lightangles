@@ -36,14 +36,14 @@ const ESCAPEKEY = 27;
 const OKEY = 79;
 const FONT = "Oswald-Regular";
 
-const MAXPLAYERCOUNT = 8;
+const MAXPLAYERCOUNT = 16;
 
-const CYCLESPEED = 4;
-const TRAILWIDTH = 4;
+let CYCLESPEED = 4;
+let TRAILWIDTH = 4;
 
 let DISAPPEARTIMEOUT;
 let DISAPPEAR = false;
-const DISAPPEARTIME = 5000;
+const DISAPPEARTIME = 1000;
 
 function Theme(name, colour, background, text, textHighlight) {
 	this.NAME = name;
@@ -66,20 +66,30 @@ const OPTIONS = {
 	DISAPPEARINGTRAILS: false
 }
 
-const CYCLELENGTH = 20;
-const CYCLEWIDTH = 10;
-const WIDTHMARGIN = Math.abs(CYCLELENGTH - CYCLEWIDTH)/2;
+// These reassigned for smaller cycles
+let CYCLELENGTH = 20;
+let CYCLEWIDTH = 10;
+const CYCLEMARGIN = (CYCLELENGTH - CYCLEWIDTH)/2;
 
 // Actual cycle and trail are hard-coded images, this ultimately applies to just score & winning text
 const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(0,0,255,255)", //blue
 				"rgba(255,223,0,255)", //yellow
-				"rgba(0,255,0,255)", //green
+				"rgba(0,255,0,255)", //limegreen
 				"rgba(255,165,0,255)", //orange
 				"rgba(0,255,255,255)", //cyan
 				"rgba(255,0,255,255)", //magenta
-				"rgba(119,119,119,255)"]; //grey
+				"rgba(119,119,119,255)", //grey
+				"rgba(255,165,255,255)", //pink
+				"rgba(0,0,119,255)", //darkblue
+				"rgba(119,119,0,255)", //olive
+				"rgba(0,119,0,255)", //green
+				"rgba(119,0,0,255)", //maroon
+				"rgba(0,119,119,255)", //teal
+				"rgba(119,0,119,255)", //purple
+				"rgba(165,165,165,255)"]; //silver
 
+// Note: These correspond with DIR Enumeration
 const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
 				[84,70,71,72,89], //tfghy
 				[73,74,75,76,79], //ijklo
@@ -87,25 +97,48 @@ const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
 				[49,50,51,52,53], //12345
 				[54,55,56,57,48], //67890
 				[90,88,67,86,66], //zxcvb
-				[78,77,188,190,191]] //nm,./
+				[78,77,188,190,191], //nm,./
+				[], // More keys is just a hassle to setup
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[]];
 
 // Dynamic based on OPTIONS.PLAYERCOUNT
 function setCycleStarts() {
-	const VSTARTOFFSET = Math.round(cycleCanvas.height/10); //Integer Points on Canvas are more optimized
-	const HSTARTOFFSET = Math.round(cycleCanvas.width/(OPTIONS.PLAYERCOUNT + 1)); //Integer Points on Canvas are more optimized
-	const CYCLESTARTS = [];
+	//Integer Points on Canvas are more optimized
+	const voffset = Math.round(cycleCanvas.height/10); 
+	const hoffset = Math.round(cycleCanvas.width/(OPTIONS.PLAYERCOUNT + 1));
+	const cyclestarts = [];
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
-		let y = ((i % 2 === 0) ? VSTARTOFFSET : cycleCanvas.height - VSTARTOFFSET - CYCLELENGTH);
-		let x = HSTARTOFFSET * (i + 1);
-		CYCLESTARTS.push([x, y]);
+		let y = ((i % 2 === 0) ? voffset : cycleCanvas.height - voffset - CYCLELENGTH/2);
+		let x = hoffset * (i + 1) - CYCLEWIDTH/2;
+		cyclestarts.push([x, y]);
 	}
-	return CYCLESTARTS;
+	return cyclestarts;
+}
+
+function setCycleSize(playercount) {
+	if (playercount <= 8) {
+		TRAILWIDTH = 4;
+		CYCLELENGTH = 20;
+		CYCLEWIDTH = 10;
+		CYCLESPEED = 4;
+	} else {
+		TRAILWIDTH = 2;
+		CYCLELENGTH = 8;
+		CYCLEWIDTH = 4;
+		CYCLESPEED = 3;
+	} 
 }
 
 // LET THERE BE MUTABLE GLOBAL VARIABLES
 
-// Mutable to reset to zero?
-let SCORES = [0,0,0,0,0,0,0,0];
+// Mutable to reset, ie. map to zero?
+let SCORES = new Array(MAXPLAYERCOUNT).fill(0);
 
 let HIGHLIGHT = 0;
 				
@@ -151,9 +184,8 @@ Object.freeze(STATE);
 // Sounds
 // ----------------------------------------------------------------------------------------------------------------------
 
-let menuMusic = document.getElementById("menuMusic");
-let gameMusic = document.getElementById("gameMusic");
-menuMusic.volume = 1;
+const menuMusic = document.getElementById("menuMusic");
+const gameMusic = document.getElementById("gameMusic");
 
 const deathSound = new Audio("snd/explosion2.mp3");
 const optionSound = new Audio("snd/option.wav");
@@ -198,62 +230,63 @@ function startAudio (audio, target) {
 // ----------------------------------------------------------------------------------------------------------------------
 
 function Cycle(id, x, y, colour, controls, initialDirection) { 
+	this.alive = true;
 	this.id = id; 
-	this.x = x; //Top Left Corner, including widthmargin
-	this.y = y; //Top Left Corner, including widthmargin
+	this.x = x; //Center
+	this.y = y; //Center
 	this.colour = colour; 
-	this.controls = controls;
+	this.controls = controls; //Keyboard
 	this.boost = 1; //Multiplier
 	this.boostcharge = true; //Set to false to prevent spam
 	this.speed = CYCLESPEED;
 	this.direction = initialDirection;
 	this.directionPrev = initialDirection;
-	this.orientation = ((initialDirection === DIR.LEFT || initialDirection === DIR.RIGHT) ? ORI.HORIZONTAL : ORI.VERTICAL);
-	this.alive = true;
+	this.orientation = ((this.direction === DIR.LEFT || this.direction === DIR.RIGHT) ? ORI.HORIZONTAL : ORI.VERTICAL);
+	this.xlength = ((this.orientation === ORI.HORIZONTAL) ? CYCLELENGTH : CYCLEWIDTH);
+	this.ylength = ((this.orientation === ORI.HORIZONTAL) ? CYCLEWIDTH : CYCLELENGTH);
+ 	// Similar setup to cycle xlength and ylength
+	this.xhbLength = ((this.orientation === ORI.HORIZONTAL) ? this.speed * this.boost : TRAILWIDTH);
+	this.yhbLength = ((this.orientation === ORI.HORIZONTAL) ? TRAILWIDTH : this.speed * this.boost); 
 	// Pixel Images used because anti-aliasing applied to drawn canvas rectangles
-	this.image = ((initialDirection === DIR.LEFT || initialDirection === DIR.RIGHT) ? loader.images["cycle" + id + "h"] : loader.images["cycle" + id + "v"]);
-	this.trail = loader.images["trail" + id];
-	
+	this.image = loader.images["cycle" + id];
 	// Turns is used to trace path and erase on death
-	this.turns = [[this.x + CYCLELENGTH/2, this.y + CYCLELENGTH/2]]; //Start Point
+	this.turns = [[this.x, this.y]]; //Start Point
 
- 	//Hitbox always at mid-front interior, just size of cyclespeed/trailwidth, visible with Boost setting
- 	//Hitbox x and y are always top left corner, length and width stay constant but drawing uses them based on orientation
+ 	// Easiest to set Hitbox x and y as always top left corner by case for easiest collision detection
+ 	// Hitbox can't be centered right now because it would overlap trail and cause suicide
 	this.setHitbox = function (direction) {
-		this.hitboxX, this.hitboxY; //Top Left Corner
-		this.hitboxLength = this.speed * this.boost;
-		this.hitboxWidth = TRAILWIDTH;
 		if (direction === DIR.RIGHT) {
-			this.hitboxX = this.x + CYCLELENGTH/2; 
-			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
+			this.xhb = this.x; 
+			this.yhb = this.y - TRAILWIDTH/2;
 		} else if (direction === DIR.LEFT) {
-			this.hitboxX = this.x + CYCLELENGTH/2 - this.hitboxLength; 
-			this.hitboxY = this.y + CYCLELENGTH/2 - TRAILWIDTH/2;
+			this.xhb = this.x - this.xhbLength; 
+			this.yhb = this.y - TRAILWIDTH/2;
 		} else if (direction === DIR.UP) {
-			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
-			this.hitboxY = this.y + CYCLELENGTH/2 - this.hitboxLength;
+			this.xhb = this.x - TRAILWIDTH/2; 
+			this.yhb = this.y - this.yhbLength;
 		} else if (direction === DIR.DOWN) {
-			this.hitboxX = this.x + CYCLELENGTH/2 - TRAILWIDTH/2; 
-			this.hitboxY = this.y + CYCLELENGTH/2;
+			this.xhb = this.x - TRAILWIDTH/2; 
+			this.yhb = this.y;
 		}
 	}
+
 }
 
 const drawHitbox = function(cycle) {
 	// I am an awful person and am using the Hitbox as a boost display for no clear reason
 	cycleCtx.fillStyle = (cycle.boostcharge ? "#FFFFFF" : cycle.colour);
-	if (cycle.orientation === ORI.HORIZONTAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, cycle.hitboxLength, cycle.hitboxWidth);
-	else if (cycle.orientation === ORI.VERTICAL) cycleCtx.fillRect(cycle.hitboxX, cycle.hitboxY, cycle.hitboxWidth, cycle.hitboxLength);
+	cycleCtx.fillRect(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength);
 }
 
 const cycles = [];
 
 const initializeCycles = function() {
 	cycles.length = 0; // Empties array
-	const CYCLESTARTS = setCycleStarts();
+	setCycleSize(OPTIONS.PLAYERCOUNT);
+	const cyclestarts = setCycleStarts();
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
-		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP); //Choice to alternate Left/Right, could change
-		cycles.push(new Cycle(i, CYCLESTARTS[i][0], CYCLESTARTS[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
+		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP);
+		cycles.push(new Cycle(i, cyclestarts[i][0], cyclestarts[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
 		cycles[i].setHitbox(initialDirection);
 	}
 };
@@ -264,16 +297,16 @@ const initializeCycles = function() {
 
 const keysDown = {};
 
-addEventListener("keydown", function (e) {
-	keysDown[e.keyCode] = true;
+addEventListener("keydown", function (event) {
+	keysDown[event.keyCode] = true;
 }, false);
-addEventListener("keyup", function (e) {
-	delete keysDown[e.keyCode];
+addEventListener("keyup", function (event) {
+	delete keysDown[event.keyCode];
 }, false);
 
 const getGamepad = function (id) {
 	const gamepad = navigator.getGamepads()[id];
-	const gamepadControls = {
+	const controls = {
 		Up: false,
 		Left: false,
 		Down: false,
@@ -283,24 +316,25 @@ const getGamepad = function (id) {
 		A: false,
 		B: false,
 		none: function() {
-			for (let i in this) {
-	        	if (this[i] === true) return false;
+			for (let control in this) {
+	        	if (this[control] === true) return false;
 	    	}
 	    	return true;
 	    }
 	};
+	// Set controls
 	if (gamepad) {
 		// 0.3 being makeshift deadzone
-		gamepadControls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
-		gamepadControls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
-		gamepadControls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
-		gamepadControls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
-		gamepadControls.Start = gamepad.buttons[9].pressed;
-		gamepadControls.Back = gamepad.buttons[8].pressed;
-		gamepadControls.A = gamepad.buttons[0].pressed;
-		gamepadControls.B = gamepad.buttons[1].pressed;
+		controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
+		controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
+		controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
+		controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
+		controls.Start = gamepad.buttons[9].pressed;
+		controls.Back = gamepad.buttons[8].pressed;
+		controls.A = gamepad.buttons[0].pressed;
+		controls.B = gamepad.buttons[1].pressed;
 	}
-	return gamepadControls;
+	return controls;
 };
 
 // ----------------------------------------------------------------------------------------------------------------------
@@ -312,6 +346,7 @@ const activateBoost = function(cycle) {
 		boostSound.currentTime = 0; boostSound.play();
 		cycle.boost = 2;
 		cycle.boostcharge = false;
+		// Implementation is bad because it will timeout during Pause
 		setTimeout(function() {
 			cycle.boost = 1;
 		}, 500);
@@ -323,79 +358,72 @@ const activateBoost = function(cycle) {
 
 const movement = function(cycle) {
 
-	// Erase Previous Drawing
-	switch (cycle.orientation) {
-		case ORI.VERTICAL:
-			cycleCtx.clearRect(cycle.x + WIDTHMARGIN, cycle.y, CYCLEWIDTH, CYCLELENGTH);
-			break;
-		case ORI.HORIZONTAL:
-			cycleCtx.clearRect(cycle.x, cycle.y + WIDTHMARGIN, CYCLELENGTH, CYCLEWIDTH);
-			break;
-	}
+	// Erase previous drawing
+	cycleCtx.clearRect(cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
 	
 	// Get relevant controls
-	const cycleControls = cycle.controls;
-	const gamepadControls = getGamepad(cycle.id);
+	const keyboard = cycle.controls;
+	const gamepad = getGamepad(cycle.id);
 	
-	// Set cycle properties due to controls
+	// Set cycle orientation and direction
 	// Cycles can't turn backwards
-	if (cycleControls[DIR.UP] in keysDown || gamepadControls.Up === true) {
+	if (keyboard[DIR.UP] in keysDown || gamepad.Up === true) {
 		if (cycle.direction !== DIR.DOWN) { 
 			cycle.direction = DIR.UP;
 			cycle.orientation = ORI.VERTICAL;
-			cycle.image = loader.images["cycle" + cycle.id + "v"]
 		}
-	} else if (cycleControls[DIR.LEFT] in keysDown || gamepadControls.Left === true) {
+	} else if (keyboard[DIR.LEFT] in keysDown || gamepad.Left === true) {
 		if (cycle.direction !== DIR.RIGHT) {
 			cycle.direction = DIR.LEFT;
 			cycle.orientation = ORI.HORIZONTAL;
-			cycle.image = loader.images["cycle" + cycle.id + "h"]
 		}
-	} else if (cycleControls[DIR.DOWN] in keysDown || gamepadControls.Down === true) {
+	} else if (keyboard[DIR.DOWN] in keysDown || gamepad.Down === true) {
 		if (cycle.direction !== DIR.UP) { 
 			cycle.direction = DIR.DOWN;
 			cycle.orientation = ORI.VERTICAL;
-			cycle.image = loader.images["cycle" + cycle.id + "v"]
 		}
-	} else if (cycleControls[DIR.RIGHT] in keysDown || gamepadControls.Right === true) {
+	} else if (keyboard[DIR.RIGHT] in keysDown || gamepad.Right === true) {
 		if (cycle.direction !== DIR.LEFT) {	
 			cycle.direction = DIR.RIGHT;
 			cycle.orientation = ORI.HORIZONTAL;
-			cycle.image = loader.images["cycle" + cycle.id + "h"]
 		}
 	}
 
 	// Last key in controls is boost
-	if (cycleControls[cycleControls.length - 1] in keysDown || gamepadControls.A === true) {
+	if (keyboard[keyboard.length - 1] in keysDown || gamepad.A === true) {
 		activateBoost(cycle);
 	}
 	
-	// Track turns of cycle for erasing on death
 	if (cycle.directionPrev !== cycle.direction) {
-		cycle.turns.push([cycle.x + CYCLELENGTH/2, cycle.y + CYCLELENGTH/2]);
+		// Swap these values
+		// You never go backwards so orientation always changes when direction does
+		[cycle.xlength, cycle.ylength] = [cycle.ylength, cycle.xlength];
+		[cycle.xhblength, cycle.yhbLength] = [cycle.yhbLength, cycle.xhbLength];
+
+		// Track turns of cycle for erasing on death
+		cycle.turns.push([cycle.x, cycle.y]);
 		cycle.directionPrev = cycle.direction;
-		//console.log(cycle.turns);
 	}
 
-	// Draw newest frame
+	// Update location and add trail
 	switch (cycle.direction) {
 		case DIR.UP:
 			cycle.x = cycle.x;
 			cycle.y = cycle.y - cycle.speed * cycle.boost;
 			lineCtx.drawImage(
-				cycle.trail, //image
-				cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2, //x
-				cycle.y + CYCLELENGTH/2, //y
-				TRAILWIDTH, //length
-				cycle.speed * cycle.boost); //width
+				cycle.image, //image
+				cycle.x - TRAILWIDTH/2, //x
+				cycle.y, //y
+				TRAILWIDTH, //xlength
+				cycle.speed * cycle.boost); //ylength
 			break;
 		case DIR.LEFT:
 			cycle.x = cycle.x - cycle.speed * cycle.boost;
 			cycle.y = cycle.y;
 			lineCtx.drawImage(
-				cycle.trail,
-				cycle.x + CYCLELENGTH/2,
-				cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2,
+				cycle.image,
+				cycle.x,
+				cycle.y - TRAILWIDTH/2,
 				cycle.speed * cycle.boost,
 				TRAILWIDTH);
 			break;
@@ -403,9 +431,9 @@ const movement = function(cycle) {
 			cycle.x = cycle.x;
 			cycle.y = cycle.y + cycle.speed * cycle.boost;
 			lineCtx.drawImage(
-				cycle.trail,
-				cycle.x + CYCLELENGTH/2 - TRAILWIDTH/2,
-				cycle.y + CYCLELENGTH/2 - cycle.speed * cycle.boost,
+				cycle.image,
+				cycle.x - TRAILWIDTH/2,
+				cycle.y - cycle.speed * cycle.boost,
 				TRAILWIDTH,
 				cycle.speed * cycle.boost);
 			break;
@@ -413,9 +441,9 @@ const movement = function(cycle) {
 			cycle.x = cycle.x + cycle.speed * cycle.boost;
 			cycle.y = cycle.y;
 			lineCtx.drawImage(
-				cycle.trail,
-				cycle.x + CYCLELENGTH/2 - cycle.speed * cycle.boost,
-				cycle.y + CYCLELENGTH/2 - TRAILWIDTH/2,
+				cycle.image,
+				cycle.x - cycle.speed * cycle.boost,
+				cycle.y - TRAILWIDTH/2,
 				cycle.speed * cycle.boost,
 				TRAILWIDTH);
 			break;
@@ -424,58 +452,31 @@ const movement = function(cycle) {
 			cycle.y = cycle.y;
 	}
 
-	// Set Hitbox?
+	// Need to update hitbox coordinates with movement
 	cycle.setHitbox(cycle.direction);
 };
 
 const collisionCheck = function(cycle) {
-	// Image Data is RGBαRGBαRGBα... of each pixel in selection
-	// Hitbox is (trailwidth * cyclespeed) at the very front (protruding or intruding?) of the cycle
-	// Note that getImageData() & files written to cycleCanvas create a security issue, so game must be run on a server or annoying options set to allow images
-	// Careful that Cyclespeed isn't faster than Hitbox size
-	
+
 	// Check Boundary Collision
-	let hitbox;
-	switch (cycle.orientation) {
-		case ORI.VERTICAL:
-			if (cycle.hitboxX < 0 || cycle.hitboxY < 0 || cycle.hitboxX + cycle.hitboxWidth > cycleCanvas.width || cycle.hitboxY + cycle.hitboxLength > cycleCanvas.height) {
-				killCycle(cycle);
-			}
-			hitbox = lineCtx.getImageData(cycle.hitboxX, cycle.hitboxY, cycle.hitboxWidth, cycle.hitboxLength).data;
-			break;
-		case ORI.HORIZONTAL:
-			if (cycle.hitboxX < 0 || cycle.hitboxY < 0 || cycle.hitboxX + cycle.hitboxLength > cycleCanvas.width || cycle.hitboxY + cycle.hitboxWidth > cycleCanvas.height) {
-				killCycle(cycle);
-			}
-			hitbox = lineCtx.getImageData(cycle.hitboxX, cycle.hitboxY, cycle.hitboxLength, cycle.hitboxWidth).data;
-			break;
+	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength > cycleCanvas.width || cycle.yhb + cycle.yhbLength > cycleCanvas.height) {
+		killCycle(cycle);
+		return;
 	}
-	
+
 	// Check Cycle Collision First
 	cycles.forEach(function(othercycle) {
 		if (othercycle.id !== cycle.id) {
 			if (othercycle.alive === true) {
-				// Have to do some ugly config for hitbox depending on orientation
-				let cycleWidth, cycleLength, otherWidth, otherLength;
-				if (cycle.orientation === ORI.VERTICAL) {
-					cycleWidth = cycle.hitboxX + cycle.hitboxWidth;
-					cycleLength = cycle.hitboxY + cycle.hitboxLength;
-				} else {
-					cycleWidth = cycle.hitboxX + cycle.hitboxLength;
-					cycleLength = cycle.hitboxY + cycle.hitboxWidth;
-				}
-				if (cycle.orientation === ORI.VERTICAL) {
-					otherWidth = othercycle.hitboxX + othercycle.hitboxWidth;
-					otherLength = othercycle.hitboxY + othercycle.hitboxLength;
-				} else {
-					otherWidth = othercycle.hitboxX + othercycle.hitboxLength;
-					otherLength = othercycle.hitboxY + othercycle.hitboxWidth;
-				}
+				const cyclexhbEdge = cycle.xhb + cycle.xhbLength;
+				const cycleyhbEdge = cycle.yhb + cycle.yhbLength;
+				const otherxhbEdge = othercycle.xhb + othercycle.xhbLength;
+				const otheryhbEdge = othercycle.yhb + othercycle.yhbLength;
 
-				if (cycle.hitboxX <= otherWidth 
-				&& othercycle.hitboxX <= cycleWidth 
-				&& cycle.hitboxY <= otherLength
-				&& othercycle.hitboxY <= cycleLength) {
+				if (cycle.xhb <= otherxhbEdge
+				&& othercycle.xhb <= cyclexhbEdge
+				&& cycle.yhb <= otheryhbEdge
+				&& othercycle.yhb <= cycleyhbEdge) {
 					killCycle(cycle);
 					killCycle(othercycle);
 					return;
@@ -485,6 +486,9 @@ const collisionCheck = function(cycle) {
 	});
 	
 	// Check Trail Collision
+	// Image Data is RGBαRGBαRGBα... of each pixel in selection
+	// Note that getImageData() & files written to cycleCanvas create a security issue, so game must be run on a server or annoying options set to allow images
+	const hitbox = lineCtx.getImageData(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength).data;
 	for (let i = 0; i < hitbox.length; i += 4) {
 		pixelcolour = "rgba(" + hitbox[i] + "," + hitbox[i+1] + "," + hitbox[i+2] + "," + hitbox[i+3] + ")";
 		if (pixelcolour !== "rgba(0,0,0,0)") { // rgba(0,0,0,0) is transparent black, ie. default background
@@ -526,7 +530,7 @@ const killCycle = function(cycle) {
 	gameMusic.playbackRate += 0.5 / MAXPLAYERCOUNT;
 	cycle.alive = false;
 	eraseCycle(cycle);
-	cycle.turns.push([cycle.x + CYCLELENGTH/2, cycle.y + CYCLELENGTH/2]);  // End Point
+	cycle.turns.push([cycle.x, cycle.y]);  // End Point
 	eraseTrail(cycle);
 };
 
@@ -543,23 +547,14 @@ const eraseTrail = function(cycle) {
 };
 
 const eraseCycle = function(cycle) {
-	let deathAnimation;
-	if (cycle.orientation === ORI.VERTICAL) deathAnimation = loader.images["cycleDie" + cycle.id + "v"];
-	else if (cycle.orientation === ORI.HORIZONTAL) deathAnimation = loader.images["cycleDie" + cycle.id + "h"];
+	let deathAnimation = loader.images["cycleDie" + cycle.id];
 	let i = 1;
+	const animationFrames = 6;
 	const drawDeath = setInterval(function() {
-		// Erase Previous Drawing
-		switch (cycle.orientation) {
-			case ORI.VERTICAL:
-				cycleCtx.clearRect(cycle.x + WIDTHMARGIN, cycle.y, CYCLEWIDTH, CYCLELENGTH);
-				break;
-			case ORI.HORIZONTAL:
-				cycleCtx.clearRect(cycle.x, cycle.y + WIDTHMARGIN, CYCLELENGTH, CYCLEWIDTH);
-				break;
-		}
-		cycleCtx.drawImage(deathAnimation, (i % 2) * CYCLELENGTH, (Math.floor(i/2) % 3) * CYCLELENGTH, CYCLELENGTH, CYCLELENGTH, cycle.x, cycle.y, CYCLELENGTH, CYCLELENGTH);
+		cycleCtx.clearRect(cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
+		cycleCtx.drawImage(deathAnimation, (i % 2) * 20, (Math.floor(i/2) % 3) * 20, cycle.xlength, cycle.ylength, cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
 		i += 1;
-		if (i === 6) clearInterval(drawDeath);
+		if (i === animationFrames) clearInterval(drawDeath);
 	}, 100);
 }
 
@@ -657,17 +652,18 @@ const update = function () {
 
 // Draw everything
 let render = function () {
-	
+
+	//Cycle display
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) { 
-			cycleCtx.drawImage(cycle.image, cycle.x, cycle.y);
+			cycleCtx.drawImage(cycle.image, cycle.x - cycle.xlength/2, cycle.y - cycle.ylength/2, cycle.xlength, cycle.ylength);
 			if (OPTIONS.BOOST) drawHitbox(cycle);
 		}
 	});
 	
-	menuCtx.clearRect(0, 0, 50, menuCanvas.height); //Hard Coded Erase, Getting Desperate
+	// Score Display
+	menuCtx.clearRect(0, 0, 50, menuCanvas.height); //Hard Coded Erase?
 	menuCtx.font = "24px " + FONT;
-	
 	menuCtx.textAlign = "left";
 	menuCtx.textBaseline = "top";
 	cycles.forEach(function(cycle) {
@@ -702,7 +698,7 @@ const showInputMessage = function (message, id, ready) {
 		INPUTTER = 0;
 	}
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
-	menuCtx.lineWidth = TRAILWIDTH * 2;
+	menuCtx.lineWidth = 8;
 	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
 	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
 	
@@ -725,6 +721,7 @@ const showTimeoutMessage = function (messages) {
 		menuCtx.textAlign = "center";
 		menuCtx.textBaseline = "middle";
 		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+		menuCtx.lineWidth = 8;
 		
 		if (timer !== messages.length) {
 			countSound.currentTime = 0; countSound.play();
@@ -947,11 +944,8 @@ const doGameState = function (gamestate) {
 const imageSources = function () {
 	const sources = [];
 	for (let i = 0; i < MAXPLAYERCOUNT; i++) {
-		sources.push("cycle" + i + "h");
-		sources.push("cycle" + i + "v");
-		sources.push("cycleDie" + i + "h");
-		sources.push("cycleDie" + i + "v");
-		sources.push("trail" + i);
+		sources.push("cycle" + i);
+		sources.push("cycleDie" + i);
 	}
 	sources.push("logo2");
 	sources.push("bgTileBlack");
@@ -1000,8 +994,6 @@ const main = function (gamestate) {
 
 	requestAnimationFrame(function() { main(gamestate) });
 };
-
-//main(STATE.TITLE);
 
 // Preloads and holds images, then it calls main
 const loader = new Loader(imageSources());
