@@ -172,6 +172,31 @@ function mod(n, m) {
 	return ((n % m) + m) % m;
 }
 
+function toggleFullScreen(elem) {
+    // ## The below if statement seems to work better ## if ((document.fullScreenElement && document.fullScreenElement !== null) || (document.msfullscreenElement && document.msfullscreenElement !== null) || (!document.mozFullScreen && !document.webkitIsFullScreen)) {
+    if ((document.fullScreenElement !== undefined && document.fullScreenElement === null) || (document.msFullscreenElement !== undefined && document.msFullscreenElement === null) || (document.mozFullScreen !== undefined && !document.mozFullScreen) || (document.webkitIsFullScreen !== undefined && !document.webkitIsFullScreen)) {
+        if (elem.requestFullScreen) {
+            elem.requestFullScreen();
+        } else if (elem.mozRequestFullScreen) {
+            elem.mozRequestFullScreen();
+        } else if (elem.webkitRequestFullScreen) {
+            elem.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+        }
+    } else {
+        if (document.cancelFullScreen) {
+            document.cancelFullScreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.webkitCancelFullScreen) {
+            document.webkitCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------------------------------------------------
 // Enumerations
 // ----------------------------------------------------------------------------------------------------------------------
@@ -342,14 +367,18 @@ const getGamepad = function (id) {
 	// Set controls
 	if (gamepad) {
 		// 0.3 being makeshift deadzone
-		controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
-		controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
-		controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
-		controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
-		controls.Start = gamepad.buttons[9].pressed;
-		controls.Back = gamepad.buttons[8].pressed;
-		controls.A = gamepad.buttons[0].pressed;
-		controls.B = gamepad.buttons[1].pressed;
+		try {
+			controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
+			controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
+			controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
+			controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
+			controls.Start = gamepad.buttons[9].pressed;
+			controls.Back = gamepad.buttons[8].pressed;
+			controls.A = gamepad.buttons[0].pressed;
+			controls.B = gamepad.buttons[1].pressed;
+		} catch (err) {
+			console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
+		}
 	}
 	return controls;
 };
@@ -887,7 +916,10 @@ const doOptionState = function (gamestate) {
 					break;
 			}
 			option2Sound.currentTime = 0; option2Sound.play();
-		// Special Option: Reload Game with Controller
+		// Special Options: Fullscreen or Reload Game with Controller
+		} else if (gamepadControls.Back === true) {
+			toggleFullScreen(document.body);
+			window.location.reload();
 		} else if (gamepadControls.B === true) {
 			window.location.reload();
 		} else {
