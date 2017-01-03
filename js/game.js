@@ -197,7 +197,7 @@ function toggleFullScreen(elem) {
     }
 }
 
-document.addEventListener("fullscreenchange", function(event) {
+document.onfullscreenchange = function (event) { 
 	// Lazy Adjust Canvas Size
     menuCanvas.width = window.innerWidth;
 	menuCanvas.height = window.innerHeight;
@@ -877,7 +877,7 @@ const doOptionState = function (gamestate) {
 		menuCtx.fillStyle = CYCLECOLOURS[i];
 		const gamepad = getGamepad(i);
 		if (gamepad.A === true) {
-			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 10, menuCanvas.height/2 - 30 * 5, 20, 20);
+			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i, menuCanvas.height/2 - 30 * 5 - 5, 20, 20);
 		} else {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
 		}
