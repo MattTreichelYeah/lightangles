@@ -44,17 +44,6 @@ body.appendChild(trailCanvas);
 body.appendChild(cycleCanvas);
 body.appendChild(menuCanvas);
 
-// Lazy to update to screen resize
-addEventListener("onresize", function (event) {
-	console.log("Ejkzs");
-	menuCanvas.width = window.innerWidth;
-	menuCanvas.height = window.innerHeight;
-	cycleCanvas.width = window.innerWidth;
-	cycleCanvas.height = window.innerHeight - SCOREDISPLAY;
-	trailCanvas.width = window.innerWidth;
-	trailCanvas.height = window.innerHeight - SCOREDISPLAY;
-}, false);
-
 // ----------------------------------------------------------------------------------------------------------------------
 //  Global Settings
 // ----------------------------------------------------------------------------------------------------------------------
@@ -206,6 +195,13 @@ function toggleFullScreen(elem) {
             document.msExitFullscreen();
         }
     }
+    // Adjust Canvas Size
+    menuCanvas.width = window.innerWidth;
+	menuCanvas.height = window.innerHeight;
+	cycleCanvas.width = window.innerWidth;
+	cycleCanvas.height = window.innerHeight - SCOREDISPLAY;
+	trailCanvas.width = window.innerWidth;
+	trailCanvas.height = window.innerHeight - SCOREDISPLAY;
 }
 
 // ----------------------------------------------------------------------------------------------------------------------
