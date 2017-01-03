@@ -207,7 +207,7 @@ document.onfullscreenchange = function (event) {
 	trailCanvas.height = window.innerHeight - SCOREDISPLAY;
 	console.log(menuCanvas.width);
 	console.log(menuCanvas.height);
-});
+}
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Enumerations
