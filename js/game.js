@@ -197,7 +197,7 @@ function toggleFullScreen(elem) {
     }
 }
 
-documentElement.addEventListener("fullscreenchange", function(event) {
+document.documentElement.addEventListener("fullscreenchange", function(event) {
 	// Lazy Adjust Canvas Size
     menuCanvas.width = window.innerWidth;
 	menuCanvas.height = window.innerHeight;
