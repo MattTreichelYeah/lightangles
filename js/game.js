@@ -919,7 +919,6 @@ const doOptionState = function (gamestate) {
 		// Special Options: Fullscreen or Reload Game with Controller
 		} else if (gamepadControls.Back === true) {
 			toggleFullScreen(document.body);
-			window.location.reload();
 		} else if (gamepadControls.B === true) {
 			window.location.reload();
 		} else {
