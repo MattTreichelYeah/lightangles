@@ -197,6 +197,7 @@ function toggleFullScreen(elem) {
     }
 }
 
+// Only works unprefixed with custom browser config
 document.onfullscreenchange = function (event) { 
 	// Lazy Adjust Canvas Size
     menuCanvas.width = window.innerWidth;
@@ -846,6 +847,9 @@ const doTitleState = function (gamestate) {
 			BUTTONPRESS = true;
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 			gamestate = STATE.OPTION;
+		} else if (gamepad.B === true) {
+			// Only works with custom browser config
+			window.close();
 		}
 	}
 	return(gamestate);
@@ -944,6 +948,7 @@ const doOptionState = function (gamestate) {
 			option2Sound.currentTime = 0; option2Sound.play();
 		// Special Options: Fullscreen or Reload Game with Controller
 		} else if (gamepad.Back === true) {
+			// Only works with custom browser config
 			toggleFullScreen(document.documentElement);
 		} else if (gamepad.B === true) {
 			window.location.reload();
