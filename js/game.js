@@ -202,6 +202,8 @@ function toggleFullScreen(elem) {
 	cycleCanvas.height = window.innerHeight - SCOREDISPLAY;
 	trailCanvas.width = window.innerWidth;
 	trailCanvas.height = window.innerHeight - SCOREDISPLAY;
+	console.log(menuCanvas.width);
+	console.log(menuCanvas.height);
 }
 
 // ----------------------------------------------------------------------------------------------------------------------
