@@ -195,19 +195,18 @@ function toggleFullScreen(elem) {
             document.msExitFullscreen();
         }
     }
+	elem.addEventListener("fullscreenchange", function(event) {
+		// Lazy Adjust Canvas Size
+	    menuCanvas.width = window.innerWidth;
+		menuCanvas.height = window.innerHeight;
+		cycleCanvas.width = window.innerWidth;
+		cycleCanvas.height = window.innerHeight - SCOREDISPLAY;
+		trailCanvas.width = window.innerWidth;
+		trailCanvas.height = window.innerHeight - SCOREDISPLAY;
+		console.log(menuCanvas.width);
+		console.log(menuCanvas.height);
+	});
 }
-
-document.documentElement.addEventListener("fullscreenchange", function(event) {
-	// Lazy Adjust Canvas Size
-    menuCanvas.width = window.innerWidth;
-	menuCanvas.height = window.innerHeight;
-	cycleCanvas.width = window.innerWidth;
-	cycleCanvas.height = window.innerHeight - SCOREDISPLAY;
-	trailCanvas.width = window.innerWidth;
-	trailCanvas.height = window.innerHeight - SCOREDISPLAY;
-	console.log(menuCanvas.width);
-	console.log(menuCanvas.height);
-});
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Enumerations
