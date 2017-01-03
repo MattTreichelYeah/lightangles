@@ -824,10 +824,10 @@ const doTitleState = function (gamestate) {
 	const titleImage = loader.images["logo2"];
 	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
 	
-	const gamepadControls = getGamepad(0);
+	const gamepad = getGamepad(0);
 
 	if (!BUTTONPRESS) {
-		if (ENTERKEY in keysDown || gamepadControls.A === true || gamepadControls.Start === true) {
+		if (ENTERKEY in keysDown || gamepad.A === true || gamepad.Start === true) {
 			// Clear Logo on Start and move to Options
 			// BUTTONPRESS will be deactivated by Options to prevent pass-through
 			selectSound.currentTime = 0; selectSound.play();
@@ -855,44 +855,60 @@ const doOptionState = function (gamestate) {
 	menuCtx.textBaseline = "middle";
 
 	// Write Option Text
+	// Some of this positioning is weird
 	menuCtx.fillStyle = OPTIONS.THEME.TEXTALT;
-	menuCtx.fillText("Press A or [Enter] to Start", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5);
+	menuCtx.fillText("Press Start or [Enter] to Begin", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5);
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+
+	// Controller Indicators
+	for (let i = 0; i < OPTIONS.PLAYERCOUNT; i++) {
+		menuCtx.fillStyle = CYCLECOLOURS[i];
+		const gamepad = getGamepad(i);
+		console.log(gamepad);
+		if (gamepad.A === true) {
+			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 10, menuCanvas.height/2 - 30 * 5, 20, 20);
+		} else {
+			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
+		}
+	}
+	exit();
+	
+	// Write Option Text
 	const optionmessages = ["Players: " + OPTIONS.PLAYERCOUNT,
 				"Wins: " + OPTIONS.WINS,
 				"Theme: " + OPTIONS.THEME.NAME,
 				"Boost: " + (OPTIONS.BOOST ? "Yes" : "No"),
 				"Disappearing Trails: " + (OPTIONS.DISAPPEARINGTRAILS ? "Yes" : "No")];
-	for(let i = 0; i < optionmessages.length; i += 1) {
+	for (let i = 0; i < optionmessages.length; i++) {
 		// Highlight value is updated by controls
 		menuCtx.fillStyle = (i === HIGHLIGHT ? OPTIONS.THEME.TEXTHIGHLIGHT : OPTIONS.THEME.TEXT);
 		menuCtx.fillText(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i));
 	}
 	
 	// Handle Option Controls
-	const gamepadControls = getGamepad(0);
+	const gamepad = getGamepad(0);
 	if (!BUTTONPRESS) {
 		BUTTONPRESS = true;
 		// Enter/A/Start --> Start the Game
-		if (ENTERKEY in keysDown || gamepadControls.A === true || gamepadControls.Start === true) {
+		if (ENTERKEY in keysDown || gamepad.Start === true) {
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 			gamestate = STATE.GAME;
 			selectSound.currentTime = 0; selectSound.play();
 		// Up --> Move Highlight
-		} else if (CYCLEKEYCONTROLS[0][0] in keysDown || gamepadControls.Up === true) {
+		} else if (CYCLEKEYCONTROLS[0][0] in keysDown || gamepad.Up === true) {
 			console.log(navigator.getGamepads());
 			HIGHLIGHT = mod((HIGHLIGHT - 1), Object.keys(OPTIONS).length);
 			optionSound.currentTime = 0; optionSound.play();
 		// Down --> Move Highlight
-		} else if (CYCLEKEYCONTROLS[0][2] in keysDown || gamepadControls.Down === true) { 
+		} else if (CYCLEKEYCONTROLS[0][2] in keysDown || gamepad.Down === true) { 
 			console.log(navigator.getGamepads());
 			HIGHLIGHT = mod((HIGHLIGHT + 1), Object.keys(OPTIONS).length);
 			optionSound.currentTime = 0; optionSound.play();
 		// Left/Right --> Change Option
-		} else if ((CYCLEKEYCONTROLS[0][1] in keysDown || gamepadControls.Left === true) 
-				|| (CYCLEKEYCONTROLS[0][3] in keysDown || gamepadControls.Right === true)) {
+		} else if ((CYCLEKEYCONTROLS[0][1] in keysDown || gamepad.Left === true) 
+				|| (CYCLEKEYCONTROLS[0][3] in keysDown || gamepad.Right === true)) {
 
-			const left = CYCLEKEYCONTROLS[0][1] in keysDown || gamepadControls.Left === true;
+			const left = CYCLEKEYCONTROLS[0][1] in keysDown || gamepad.Left === true;
 			const optionValue = Object.keys(OPTIONS)[HIGHLIGHT];
 			const optionType = typeof OPTIONS[optionValue];
 			switch (optionType) {
@@ -917,14 +933,14 @@ const doOptionState = function (gamestate) {
 			}
 			option2Sound.currentTime = 0; option2Sound.play();
 		// Special Options: Fullscreen or Reload Game with Controller
-		} else if (gamepadControls.Back === true) {
-			toggleFullScreen(document.body);
-		} else if (gamepadControls.B === true) {
+		} else if (gamepad.Back === true) {
+			toggleFullScreen(document.documentElement);
+		} else if (gamepad.B === true) {
 			window.location.reload();
 		} else {
 			BUTTONPRESS = false;
 		}
-	} else if (Object.keys(keysDown).length === 0 && gamepadControls.none()) { 
+	} else if (Object.keys(keysDown).length === 0 && gamepad.none()) { 
 		BUTTONPRESS = false;
 	}
 	return(gamestate);
@@ -937,16 +953,16 @@ const doGameState = function (gamestate) {
 		gameMusic.currentTime = 7.3;
 	}
 
-	const gamepadControls = getGamepad(0);
+	const gamepad = getGamepad(0);
 
 	if (!BUTTONPRESS && !MESSAGE && !INPUTMESSAGE) {
 		BUTTONPRESS = true;
 		// Pause the Game
-		if (ENTERKEY in keysDown || ESCAPEKEY in keysDown || gamepadControls.Start === true) {
+		if (ENTERKEY in keysDown || ESCAPEKEY in keysDown || gamepad.Start === true) {
 			PAUSE = !PAUSE;
 			if (PAUSE) pause(); else unpause();
 		// Go back to the Option Screen from Pause
-		} else if (PAUSE && (OKEY in keysDown || gamepadControls.Back === true)) {
+		} else if (PAUSE && (OKEY in keysDown || gamepad.Back === true)) {
 			unpause();
 			PAUSE = false;
 			RESTART = true;
@@ -988,7 +1004,7 @@ const doGameState = function (gamestate) {
 		} else {
 			BUTTONPRESS = false;
 		}
-	} else if (Object.keys(keysDown).length === 0 && gamepadControls.none()) { 
+	} else if (Object.keys(keysDown).length === 0 && gamepad.none()) { 
 		BUTTONPRESS = false;
 	}
 	return(gamestate);
