@@ -1,66 +1,21 @@
 // ----------------------------------------------------------------------------------------------------------------------
-// Create the canvas'
+// Constants
 // ----------------------------------------------------------------------------------------------------------------------
 
-const SCOREDISPLAY = 50;
-const MENUBORDER = 8;
+// Dimensions
+const SCOREHEIGHT = 50; // Score Display
+const MENUBORDER = 8; // Borders of Menu boxes like Score Display and Messages
 
-// FireFox has an annoying rendering inconsistency with text baseline
-let FFTEXTOFFSETTOP = 0;
-let FFTEXTOFFSETMIDDLE = 0;
-if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
-	FFTEXTOFFSETTOP = 10;
-	FFTEXTOFFSETMIDDLE = 3;
-}
+// Presentation
+const FONT = "Oswald-Regular";
 
-function createCanvas(menu) {
-	const canvas = document.createElement("canvas");
-	if (menu) {
-		canvas.height = window.innerHeight;
-	} else {
-		canvas.height = window.innerHeight - SCOREDISPLAY;
-		canvas.style.marginTop = SCOREDISPLAY + "px";
-	}
-	canvas.width = window.innerWidth;
-	return canvas;
-}
-
-function getContext(canvas) {
-	const ctx = canvas.getContext("2d");
-	ctx.imageSmoothingEnabled = false;
-	return ctx;
-}
-
-const menuCanvas = createCanvas(true);
-const menuCtx = getContext(menuCanvas);
-// Trails and Cycles seperated for easier drawing
-const cycleCanvas = createCanvas();
-const cycleCtx = getContext(cycleCanvas);
-const trailCanvas = createCanvas();
-const trailCtx = getContext(trailCanvas);
-
-const body = document.body;
-body.appendChild(trailCanvas);
-body.appendChild(cycleCanvas);
-body.appendChild(menuCanvas);
-
-// ----------------------------------------------------------------------------------------------------------------------
-//  Global Settings
-// ----------------------------------------------------------------------------------------------------------------------
-
+// Keyboard
 const ENTERKEY = 13;
 const ESCAPEKEY = 27;
 const OKEY = 79;
-const FONT = "Oswald-Regular";
 
+// Hard Game Rules
 const MAXPLAYERCOUNT = 16;
-
-let CYCLESPEED = 4;
-let TRAILWIDTH = 4;
-
-let DISAPPEARTIMEOUT;
-let DISAPPEAR = false;
-const DISAPPEARTIME = 5000;
 
 function Theme(name, colour, background, text, textHighlight) {
 	this.NAME = name;
@@ -74,7 +29,7 @@ const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack.png')", "
 const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite.png')", "#000000", "#FF0000");
 const THEMES = [BLACKTHEME, WHITETHEME];
 
-// External
+// External - Directly Changeable
 const OPTIONS = { 
 	PLAYERCOUNT: MAXPLAYERCOUNT/2,
 	WINS: 5,
@@ -83,12 +38,35 @@ const OPTIONS = {
 	DISAPPEARINGTRAILS: false
 }
 
-// These reassigned for smaller cycles
-let CYCLELENGTH = 20;
-let CYCLEWIDTH = 10;
-const CYCLEMARGIN = (CYCLELENGTH - CYCLEWIDTH)/2;
+// Internal - Constant or Indirectly Changeable
+const PROPERTIES = {
+	CYCLESPEED: 4,
+	CYCLELENGTH: 20,
+	CYCLEWIDTH: 20,
+	TRAILWIDTH: 4,
+	DISAPPEARTIME: 1000,
+	ADJUSTPLAYERCOUNT: function (playercount) {
+		if (playercount <= 8) {
+			this.TRAILWIDTH = 4;
+			this.CYCLELENGTH = 20;
+			this.CYCLEWIDTH = 10;
+			this.CYCLESPEED = 4;
+		} else {
+			this.TRAILWIDTH = 2;
+			this.CYCLELENGTH = 8;
+			this.CYCLEWIDTH = 4;
+			this.CYCLESPEED = 3;
+		} 
+	}
+}
 
-// Actual cycle and trail are hard-coded images, this ultimately applies to just score & winning text
+const DISAPPEAR = {
+	timeout: null,
+	started: false
+}
+
+// Actual cycle and trail are images to avoid automatic canvas anti-aliasing
+// This ultimately applies to just menu indicators
 const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(0,0,255,255)", //blue
 				"rgba(255,223,0,255)", //yellow
@@ -106,23 +84,24 @@ const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(119,0,119,255)", //purple
 				"rgba(165,165,165,255)"]; //silver
 
-// Note: These correspond with DIR Enumeration
+// Note: These correspond with DIR Enumeration, and Boost
+// Keyboard Controls provided for players 1-2 for testing 
+// and players 9-16 to support remapping when browser controller support fails
 const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
 				[84,70,71,72,89], //tfghy
+				[],
+				[],
+				[],
+				[],
+				[],
+				[187,219,221,220,189], //+[]\-
+				[80,186,222,85,82], //p;'ur
 				[73,74,75,76,79], //ijklo
 				[38,37,40,39,16], //arrows/shift
 				[49,50,51,52,53], //12345
 				[54,55,56,57,48], //67890
 				[90,88,67,86,66], //zxcvb
-				[78,77,188,190,191], //nm,./
-				[], // More keys is just a hassle to setup
-				[],
-				[],
-				[],
-				[],
-				[],
-				[],
-				[]];
+				[78,77,188,190,191]]; //nm,./
 
 // Dynamic based on OPTIONS.PLAYERCOUNT
 function setCycleStarts() {
@@ -131,84 +110,89 @@ function setCycleStarts() {
 	const hoffset = Math.round(cycleCanvas.width/(OPTIONS.PLAYERCOUNT + 1));
 	const cyclestarts = [];
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
-		let y = ((i % 2 === 0) ? voffset : cycleCanvas.height - voffset - CYCLELENGTH/2);
-		let x = hoffset * (i + 1) - CYCLEWIDTH/2;
+		let y = ((i % 2 === 0) ? voffset : cycleCanvas.height - voffset - PROPERTIES.CYCLELENGTH/2);
+		let x = hoffset * (i + 1) - PROPERTIES.CYCLEWIDTH/2;
 		cyclestarts.push([x, y]);
 	}
 	return cyclestarts;
 }
 
-function setCycleSize(playercount) {
-	if (playercount <= 8) {
-		TRAILWIDTH = 4;
-		CYCLELENGTH = 20;
-		CYCLEWIDTH = 10;
-		CYCLESPEED = 4;
-	} else {
-		TRAILWIDTH = 2;
-		CYCLELENGTH = 8;
-		CYCLEWIDTH = 4;
-		CYCLESPEED = 3;
-	} 
+// FireFox has an annoying rendering inconsistency with text baseline
+CanvasRenderingContext2D.prototype.fillTextCustom = function(text, x, y) { 
+	let yOffset = 0;
+	if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+		// Haven't needed other baselines
+		if (this.textBaseline === "top") yOffset = 10;
+		else if (this.textBaseline === "middle") yOffset = 3;
+	}
+	this.fillText(text, x, y + yOffset);
 }
 
-// LET THERE BE MUTABLE GLOBAL VARIABLES
+CanvasRenderingContext2D.prototype.clearCanvas = function(canvas) { 
+	this.clearRect(0, 0, canvas.width, canvas.height);
+}
 
-// Mutable to reset, ie. map to zero?
-let SCORES = new Array(MAXPLAYERCOUNT).fill(0);
-
-let HIGHLIGHT = 0;
-				
-let PAUSE = false;
-let RESTART = true;
-let MESSAGE = false;
-let INPUTMESSAGE = false;
-let INPUTTER = 0;
-let READY = false;
-let BUTTONPRESS = false;
+Audio.prototype.playSoundEffect = function () {
+	this.currentTime = 0; 
+	this.play();
+}
 
 // Fix JavaScript mod for negative numbers
 function mod(n, m) {
 	return ((n % m) + m) % m;
 }
 
+// Experimental FullScreen API, slightly different from F11-view
+// Only works when triggered by a user-event, which the gamepad (maybe?) can't invoke because it's also experimental
+// Works with custom FireFox 'about:config' settings: (not recommended if using the browser regularly)
+// full-screen-api.allow-trusted-requests-only: false
 function toggleFullScreen(elem) {
-    // ## The below if statement seems to work better ## if ((document.fullScreenElement && document.fullScreenElement !== null) || (document.msfullscreenElement && document.msfullscreenElement !== null) || (!document.mozFullScreen && !document.webkitIsFullScreen)) {
-    if ((document.fullScreenElement !== undefined && document.fullScreenElement === null) || (document.msFullscreenElement !== undefined && document.msFullscreenElement === null) || (document.mozFullScreen !== undefined && !document.mozFullScreen) || (document.webkitIsFullScreen !== undefined && !document.webkitIsFullScreen)) {
-        if (elem.requestFullScreen) {
-            elem.requestFullScreen();
-        } else if (elem.mozRequestFullScreen) {
-            elem.mozRequestFullScreen();
-        } else if (elem.webkitRequestFullScreen) {
-            elem.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
-        } else if (elem.msRequestFullscreen) {
-            elem.msRequestFullscreen();
-        }
-    } else {
-        if (document.cancelFullScreen) {
-            document.cancelFullScreen();
-        } else if (document.mozCancelFullScreen) {
-            document.mozCancelFullScreen();
-        } else if (document.webkitCancelFullScreen) {
-            document.webkitCancelFullScreen();
-        } else if (document.msExitFullscreen) {
-            document.msExitFullscreen();
-        }
-    }
+	if ((document.fullScreenElement !== undefined && document.fullScreenElement === null) || 
+		(document.msFullscreenElement !== undefined && document.msFullscreenElement === null) || 
+		(document.mozFullScreen !== undefined && !document.mozFullScreen) || 
+		(document.webkitIsFullScreen !== undefined && !document.webkitIsFullScreen)) {
+		if (elem.requestFullScreen) {
+			elem.requestFullScreen();
+		} else if (elem.mozRequestFullScreen) {
+			elem.mozRequestFullScreen();
+		} else if (elem.webkitRequestFullScreen) {
+			elem.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+		} else if (elem.msRequestFullscreen) {
+			elem.msRequestFullscreen();
+		}
+	} else {
+		if (document.cancelFullScreen) {
+			document.cancelFullScreen();
+		} else if (document.mozCancelFullScreen) {
+			document.mozCancelFullScreen();
+		} else if (document.webkitCancelFullScreen) {
+			document.webkitCancelFullScreen();
+		} else if (document.msExitFullscreen) {
+			document.msExitFullscreen();
+		}
+	}
 }
 
-// Only works unprefixed with custom browser config
+// Works with custom FireFox 'about:config' settings: (not recommended if using the browser regularly)
+// full-screen-api.unprefix.enabled: true
 document.onfullscreenchange = function (event) { 
-	// Lazy Adjust Canvas Size
-    menuCanvas.width = window.innerWidth;
-	menuCanvas.height = window.innerHeight;
-	cycleCanvas.width = window.innerWidth;
-	cycleCanvas.height = window.innerHeight - SCOREDISPLAY;
-	trailCanvas.width = window.innerWidth;
-	trailCanvas.height = window.innerHeight - SCOREDISPLAY;
-	console.log(menuCanvas.width);
-	console.log(menuCanvas.height);
+	setCanvasDimensions(menuCanvas, true);
+	setCanvasDimensions(cycleCanvas);
+	setCanvasDimensions(trailCanvas);
 }
+
+// LET THERE BE MUTABLE GLOBAL VARIABLES
+// Mutable to reset, ie. map to zero?
+let SCORES = new Array(MAXPLAYERCOUNT).fill(0);
+const cycles = [];
+let HIGHLIGHT = 0;		
+let PAUSE = false;
+let RESTART = true;
+let MESSAGE = false;
+let INPUTMESSAGE = false;
+let INPUTTER = 0;
+let READY = false;
+let BUTTONPRESSED = false;
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Enumerations
@@ -256,29 +240,79 @@ optionSound.volume = 0.6;
 option2Sound.volume = 0.6;
 
 function fadeAudio (audio, target) {
-    const fade = setInterval(function () {
+	const fade = setInterval(function () {
 		try { //JavaScript fails at precision
-        	audio.volume -= 0.1;
-        	if (Math.abs(audio.volume - target) <= 0.1) clearInterval(fade);
-        } catch (err) {
-        	audio.volume = 0;
-        	audio.pause();
+			audio.volume -= 0.1;
+			if (Math.abs(audio.volume - target) <= 0.1) clearInterval(fade);
+		} catch (err) {
+			audio.volume = 0;
+			audio.pause();
 			audio.currentTime = 0;
-            clearInterval(fade);
-        }
-    }, 100);
+			clearInterval(fade);
+		}
+	}, 100);
 }
 function startAudio (audio, target) {
 	audio.play();
-    const start = setInterval(function () {
+	const start = setInterval(function () {
 		try { //JavaScript fails at precision
-        	audio.volume += 0.1;
-        } catch (err) {
-        	audio.volume = 1;
-            clearInterval(start);
-        }
-    }, 10);
+			audio.volume += 0.1;
+		} catch (err) {
+			audio.volume = 1;
+			clearInterval(start);
+		}
+	}, 10);
 }
+
+function loopAudio (audio, loopTime, restartTime) {
+	if (gameMusic.currentTime >= loopTime) {
+		// Unavoidable delay, but not too noticeable
+		gameMusic.currentTime = restartTime;
+	}
+}
+
+// ----------------------------------------------------------------------------------------------------------------------
+// Create the canvas'
+// ----------------------------------------------------------------------------------------------------------------------
+
+// There are 3 canvas' to simplify drawing and collision detection
+// The Menu canvas covers the whole screen, while the others are the playfield below the Score Display
+
+function createCanvas(isMenu) {
+	const canvas = document.createElement("canvas");
+	setCanvasDimensions(canvas, isMenu);
+	return canvas;
+}
+
+function setCanvasDimensions(canvas, isMenu) {
+	if (isMenu) {
+		canvas.height = window.innerHeight;
+	} else {
+		canvas.height = window.innerHeight - SCOREHEIGHT;
+		canvas.style.marginTop = `${SCOREHEIGHT}px`;
+	}
+	canvas.width = window.innerWidth;
+}
+
+function getContext(canvas) {
+	const ctx = canvas.getContext("2d");
+	ctx.imageSmoothingEnabled = false;
+	return ctx;
+}
+
+const menuCanvas = createCanvas(true);
+const menuCtx = getContext(menuCanvas);
+const cycleCanvas = createCanvas();
+const cycleCtx = getContext(cycleCanvas);
+const trailCanvas = createCanvas();
+const trailCtx = getContext(trailCanvas);
+
+const body = document.body;
+// The layering is important
+// Cycles above their Trails and Menus above playfield
+body.appendChild(trailCanvas);
+body.appendChild(cycleCanvas);
+body.appendChild(menuCanvas);
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Game Objects
@@ -293,51 +327,49 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.controls = controls; //Keyboard
 	this.boost = 1; //Multiplier
 	this.boostcharge = true; //Set to false to prevent spam
-	this.speed = CYCLESPEED;
+	this.speed = PROPERTIES.CYCLESPEED;
 	this.direction = initialDirection;
 	this.directionPrev = initialDirection;
 	this.orientation = ((this.direction === DIR.LEFT || this.direction === DIR.RIGHT) ? ORI.HORIZONTAL : ORI.VERTICAL);
-	this.xLength = ((this.orientation === ORI.HORIZONTAL) ? CYCLELENGTH : CYCLEWIDTH);
-	this.yLength = ((this.orientation === ORI.HORIZONTAL) ? CYCLEWIDTH : CYCLELENGTH);
- 	// Similar setup to cycle xLength and yLength
-	this.xhbLength = ((this.orientation === ORI.HORIZONTAL) ? this.speed * this.boost : TRAILWIDTH);
-	this.yhbLength = ((this.orientation === ORI.HORIZONTAL) ? TRAILWIDTH : this.speed * this.boost); 
+	this.xLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.CYCLELENGTH : PROPERTIES.CYCLEWIDTH);
+	this.yLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.CYCLEWIDTH : PROPERTIES.CYCLELENGTH);
+	// Similar setup to cycle xLength and yLength
+	this.xhbLength = ((this.orientation === ORI.HORIZONTAL) ? this.speed * this.boost : PROPERTIES.TRAILWIDTH);
+	this.yhbLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.TRAILWIDTH : this.speed * this.boost); 
 	// Pixel Images used because anti-aliasing applied to drawn canvas rectangles
 	this.image = loader.images["cycle" + id];
 	// Turns is used to trace path and erase on death
 	this.turns = [[this.x, this.y]]; //Start Point
 
- 	// Easiest to set Hitbox x and y as always top left corner by case for easiest collision detection
- 	// Hitbox can't be centered right now because it would overlap trail and cause suicide
+	// Easiest to set Hitbox x and y as always top left corner by case for easiest collision detection
+	// Hitbox can't be centered right now because it would overlap trail and cause suicide
 	this.setHitbox = function (direction) {
 		if (direction === DIR.RIGHT) {
 			this.xhb = this.x; 
-			this.yhb = this.y - TRAILWIDTH/2;
+			this.yhb = this.y - PROPERTIES.TRAILWIDTH/2;
 		} else if (direction === DIR.LEFT) {
 			this.xhb = this.x - this.xhbLength; 
-			this.yhb = this.y - TRAILWIDTH/2;
+			this.yhb = this.y - PROPERTIES.TRAILWIDTH/2;
 		} else if (direction === DIR.UP) {
-			this.xhb = this.x - TRAILWIDTH/2; 
+			this.xhb = this.x - PROPERTIES.TRAILWIDTH/2; 
 			this.yhb = this.y - this.yhbLength;
 		} else if (direction === DIR.DOWN) {
-			this.xhb = this.x - TRAILWIDTH/2; 
+			this.xhb = this.x - PROPERTIES.TRAILWIDTH/2; 
 			this.yhb = this.y;
 		}
 	}
 
 }
 
-const drawHitbox = function(cycle) {
+function drawHitbox(cycle) {
 	// I am an awful person and am using the Hitbox as a boost display for no clear reason
 	cycleCtx.fillStyle = (cycle.boostcharge ? "#FFFFFF" : cycle.colour);
 	cycleCtx.fillRect(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength);
 }
 
-const cycles = [];
-
-const initializeCycles = function() {
+function initializeCycles() {
 	cycles.length = 0; // Empties array
-	setCycleSize(OPTIONS.PLAYERCOUNT);
+	PROPERTIES.ADJUSTPLAYERCOUNT(OPTIONS.PLAYERCOUNT);
 	const cyclestarts = setCycleStarts();
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP);
@@ -359,38 +391,42 @@ addEventListener("keyup", function (event) {
 	delete keysDown[event.keyCode];
 }, false);
 
-const getGamepad = function (id) {
-	const gamepad = navigator.getGamepads()[id];
-	const controls = {
-		Up: false,
-		Left: false,
-		Down: false,
-		Right: false,
-		Start: false,
-		Back: false,
-		A: false,
-		B: false,
-		none: function() {
-			for (let control in this) {
-	        	if (this[control] === true) return false;
-	    	}
-	    	return true;
-	    }
-	};
-	// Set controls
-	if (gamepad) {
-		// 0.3 being makeshift deadzone
-		try {
-			controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
-			controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
-			controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
-			controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
-			controls.Start = gamepad.buttons[9].pressed;
-			controls.Back = gamepad.buttons[8].pressed;
-			controls.A = gamepad.buttons[0].pressed;
-			controls.B = gamepad.buttons[1].pressed;
-		} catch (err) {
-			console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
+function Controls() {
+	this.Up = false,
+	this.Left = false,
+	this.Down = false,
+	this.Right = false,
+	this.Start = false,
+	this.Back = false,
+	this.A = false,
+	this.B = false,
+	this.none = function() {
+		for (let control in this) {
+			if (this[control] === true) return false;
+		}
+		return true;
+	}
+}
+
+function getGamepad(id) {
+	const gamepads = navigator.getGamepads();
+	const controls = new Controls();
+	if (id < gamepads.length) { // Or Controller Unconnected
+		const gamepad = gamepads[id];
+		if (gamepad) {
+			// 0.3 being makeshift deadzone
+			try {
+				controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
+				controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
+				controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
+				controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
+				controls.Start = gamepad.buttons[9].pressed;
+				controls.Back = gamepad.buttons[8].pressed;
+				controls.A = gamepad.buttons[0].pressed;
+				controls.B = gamepad.buttons[1].pressed;
+			} catch (err) {
+				console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
+			}
 		}
 	}
 	return controls;
@@ -400,9 +436,10 @@ const getGamepad = function (id) {
 //  Movement & Collision
 // ----------------------------------------------------------------------------------------------------------------------
 
-const activateBoost = function(cycle) {
+function activateBoost(cycle) {
 	if (OPTIONS.BOOST && cycle.boostcharge) {
-		boostSound.currentTime = 0; boostSound.play();
+
+		boostSound.playSoundEffect();
 		cycle.boost = 2;
 		cycle.boostcharge = false;
 		// Implementation is bad because it will timeout during Pause
@@ -415,7 +452,7 @@ const activateBoost = function(cycle) {
 	}
 }
 
-const movement = function(cycle) {
+function movement(cycle) {
 
 	// Erase previous drawing
 	cycleCtx.clearRect(cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
@@ -471,9 +508,9 @@ const movement = function(cycle) {
 			cycle.y = cycle.y - cycle.speed * cycle.boost;
 			trailCtx.drawImage(
 				cycle.image, //image
-				cycle.x - TRAILWIDTH/2, //x
+				cycle.x - PROPERTIES.TRAILWIDTH/2, //x
 				cycle.y, //y
-				TRAILWIDTH, //xLength
+				PROPERTIES.TRAILWIDTH, //xLength
 				cycle.speed * cycle.boost); //yLength
 			break;
 		case DIR.LEFT:
@@ -482,18 +519,18 @@ const movement = function(cycle) {
 			trailCtx.drawImage(
 				cycle.image,
 				cycle.x,
-				cycle.y - TRAILWIDTH/2,
+				cycle.y - PROPERTIES.TRAILWIDTH/2,
 				cycle.speed * cycle.boost,
-				TRAILWIDTH);
+				PROPERTIES.TRAILWIDTH);
 			break;
 		case DIR.DOWN:
 			cycle.x = cycle.x;
 			cycle.y = cycle.y + cycle.speed * cycle.boost;
 			trailCtx.drawImage(
 				cycle.image,
-				cycle.x - TRAILWIDTH/2,
+				cycle.x - PROPERTIES.TRAILWIDTH/2,
 				cycle.y - cycle.speed * cycle.boost,
-				TRAILWIDTH,
+				PROPERTIES.TRAILWIDTH,
 				cycle.speed * cycle.boost);
 			break;
 		case DIR.RIGHT:
@@ -502,9 +539,9 @@ const movement = function(cycle) {
 			trailCtx.drawImage(
 				cycle.image,
 				cycle.x - cycle.speed * cycle.boost,
-				cycle.y - TRAILWIDTH/2,
+				cycle.y - PROPERTIES.TRAILWIDTH/2,
 				cycle.speed * cycle.boost,
-				TRAILWIDTH);
+				PROPERTIES.TRAILWIDTH);
 			break;
 		default:
 			cycle.x = cycle.x;
@@ -515,7 +552,7 @@ const movement = function(cycle) {
 	cycle.setHitbox(cycle.direction);
 };
 
-const collisionCheck = function(cycle) {
+function collisionCheck(cycle) {
 
 	// Check Boundary Collision
 	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength > cycleCanvas.width || cycle.yhb + cycle.yhbLength > cycleCanvas.height) {
@@ -557,7 +594,7 @@ const collisionCheck = function(cycle) {
 	}
 };
 
-const checkWinner = function() {
+function checkWinner() {
 	let livingCycles = [];
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
@@ -568,24 +605,24 @@ const checkWinner = function() {
 		const cycle = livingCycles.pop();
 		SCORES[cycle.id] += 1;
 		if (SCORES[cycle.id] === OPTIONS.WINS) {
-			championSound.currentTime = 0; championSound.play();
+			championSound.playSoundEffect();
 			showInputMessage(MESSAGECHAMPION, cycle.id);
 		} else {
-			winnerSound.currentTime = 0; winnerSound.play();
+			winnerSound.playSoundEffect();
 			showInputMessage(MESSAGEWINNER, cycle.id);
 		}
 		RESTART = true;
 		return;
 	} else if (livingCycles.length === 0) {
-		drawSound.currentTime = 0; drawSound.play();
+		drawSound.playSoundEffect();
 		showInputMessage(MESSAGEDRAW, -1);
 		RESTART = true;
 		return;
 	}
 }
 
-const killCycle = function(cycle) {
-	deathSound.currentTime = 0; deathSound.play();
+function killCycle(cycle) {
+	deathSound.playSoundEffect();
 	gameMusic.playbackRate += 0.5 / MAXPLAYERCOUNT;
 	cycle.alive = false;
 	eraseCycle(cycle);
@@ -593,20 +630,20 @@ const killCycle = function(cycle) {
 	eraseTrail(cycle);
 };
 
-const eraseTrail = function(cycle) {
+function eraseTrail(cycle) {
 	// Traces turns and erases just player's lines
 	const turns = cycle.turns;
 	for (let i = 1; i < turns.length; i += 1) {
 		if (turns[i-1][0] !== turns[i][0]) { //Horizontal Trail
-			trailCtx.clearRect(Math.min(turns[i-1][0], turns[i][0]), turns[i][1] - TRAILWIDTH/2, Math.abs(turns[i-1][0] - turns[i][0]), TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(Math.min(turns[i-1][0], turns[i][0]), turns[i][1] - PROPERTIES.TRAILWIDTH/2, Math.abs(turns[i-1][0] - turns[i][0]), PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 		} else { //Vertical Trail
-			trailCtx.clearRect(turns[i][0] - TRAILWIDTH/2, Math.min(turns[i-1][1], turns[i][1]), TRAILWIDTH, Math.abs(turns[i-1][1] - turns[i][1])); //Erase Old Pixels
+			trailCtx.clearRect(turns[i][0] - PROPERTIES.TRAILWIDTH/2, Math.min(turns[i-1][1], turns[i][1]), PROPERTIES.TRAILWIDTH, Math.abs(turns[i-1][1] - turns[i][1])); //Erase Old Pixels
 		}
 	}
 };
 
-const eraseCycle = function(cycle) {
-	let deathAnimation = loader.images["cycleDie" + cycle.id];
+function eraseCycle(cycle) {
+	const deathAnimation = loader.images["cycleDie" + cycle.id];
 	let i = 1;
 	const animationFrames = 6;
 	const drawDeath = setInterval(function() {
@@ -617,61 +654,61 @@ const eraseCycle = function(cycle) {
 	}, 100);
 }
 
-const triggerDisappearTrail = function() {
-	DISAPPEAR = false;
-	clearTimeout(DISAPPEARTIMEOUT);
-	DISAPPEARTIMEOUT = setTimeout(function() {
-		DISAPPEAR = true;
-	}, DISAPPEARTIME);
+function triggerDisappearTrail() {
+	DISAPPEAR.started = false;
+	clearTimeout(DISAPPEAR.timeout);
+	DISAPPEAR.timeout = setTimeout(function() {
+		DISAPPEAR.started = true;
+	}, PROPERTIES.DISAPPEARTIME);
 }
 
-const disappearTrail = function(cycle) {
+// This is ugly stuff
+function disappearTrail(cycle) {
 	const turns = cycle.turns;
 
 	if (turns.length > 1) {
-		trailCtx.fillStyle = "grey";
 		if (turns[0][0] < turns[1][0]) { // Right
-			trailCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0], turns[0][1] - PROPERTIES.TRAILWIDTH/2, cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] + cycle.speed * cycle.boost;
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				trailCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0], turns[0][1] - PROPERTIES.TRAILWIDTH/2, cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 			}
 		} else if (turns[0][0] > turns[1][0]) { // Left
-			trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - PROPERTIES.TRAILWIDTH/2, cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] - cycle.speed * cycle.boost;
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - PROPERTIES.TRAILWIDTH/2, cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 			}
 		// Something's weirdly backwards about these two compared to Left/Right and turns.length === 1
 		} else if (turns[0][1] < turns[1][1]) { // Up
 			cycle.turns[0][1] = turns[0][1] + cycle.speed * cycle.boost;
-			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - PROPERTIES.TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0] - PROPERTIES.TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			}
 		} else if (turns[0][1] > turns[1][1]) { // Down
 			cycle.turns[0][1] = turns[0][1] - cycle.speed * cycle.boost;
-			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - PROPERTIES.TRAILWIDTH/2, turns[0][1], PROPERTIES.TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			if (turns[0][0] === turns[1][0] && turns[0][1] === turns[1][1]) {
 				turns.shift();
-				trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+				trailCtx.clearRect(turns[0][0] - PROPERTIES.TRAILWIDTH/2, turns[0][1], PROPERTIES.TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			}
 		}
 	} else {
 		if (cycle.direction === DIR.RIGHT) { // Right
-			trailCtx.clearRect(turns[0][0], turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0], turns[0][1] - PROPERTIES.TRAILWIDTH/2, cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] + cycle.speed * cycle.boost;
 		} else if (cycle.direction === DIR.LEFT) { // Left
-			trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - TRAILWIDTH/2, cycle.speed * cycle.boost, TRAILWIDTH); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - cycle.speed * cycle.boost, turns[0][1] - PROPERTIES.TRAILWIDTH/2, cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH); //Erase Old Pixels
 			cycle.turns[0][0] = turns[0][0] - cycle.speed * cycle.boost;
 		} else if (cycle.direction === DIR.UP) { // Up
-			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - PROPERTIES.TRAILWIDTH/2, turns[0][1] - cycle.speed * cycle.boost, PROPERTIES.TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			cycle.turns[0][1] = turns[0][1] - cycle.speed * cycle.boost;
 		} else if (cycle.direction === DIR.DOWN) { // Down
-			trailCtx.clearRect(turns[0][0] - TRAILWIDTH/2, turns[0][1], TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
+			trailCtx.clearRect(turns[0][0] - PROPERTIES.TRAILWIDTH/2, turns[0][1], PROPERTIES.TRAILWIDTH, cycle.speed * cycle.boost); //Erase Old Pixels
 			cycle.turns[0][1] = turns[0][1] + cycle.speed * cycle.boost;
 		}
 	}
@@ -682,7 +719,7 @@ const disappearTrail = function(cycle) {
 // ----------------------------------------------------------------------------------------------------------------------
 
 // Update game objects
-const update = function () {
+function update() {
 
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
@@ -697,7 +734,7 @@ const update = function () {
 		}
 	});
 
-	if (DISAPPEAR) {
+	if (DISAPPEAR.started) {
 		cycles.forEach(function(cycle) {
 			if (cycle.alive === true) {
 				disappearTrail(cycle);
@@ -709,7 +746,7 @@ const update = function () {
 };
 
 // Draw everything
-let render = function () {
+function render() {
 
 	//Cycle display
 	cycles.forEach(function(cycle) {
@@ -719,26 +756,30 @@ let render = function () {
 		}
 	});
 	
+	drawScore();
+};
+
+function drawScore() {
 	// Score Display // Not sure why repeated
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillRect(0, SCOREDISPLAY - MENUBORDER, menuCanvas.width, MENUBORDER);
+	menuCtx.fillRect(0, SCOREHEIGHT - MENUBORDER, menuCanvas.width, MENUBORDER);
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
-	menuCtx.fillRect(0, 0, menuCanvas.width, SCOREDISPLAY - MENUBORDER);
-	menuCtx.font = "24px " + FONT;
+	menuCtx.fillRect(0, 0, menuCanvas.width, SCOREHEIGHT - MENUBORDER);
+	menuCtx.font = `24px ${FONT}`;
 	menuCtx.textBaseline = "top";
 	// Logo
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
 	menuCtx.textAlign = "left";
-	menuCtx.fillText("LIGHT ANGLES", 10, 5 + FFTEXTOFFSETTOP)
+	menuCtx.fillTextCustom("LIGHT ANGLES", 10, 5)
 	menuCtx.textAlign = "right";
-	menuCtx.fillText("LIGHT ANGLES", menuCanvas.width - 10, 5 + FFTEXTOFFSETTOP)
+	menuCtx.fillTextCustom("LIGHT ANGLES", menuCanvas.width - 10, 5)
 	// Score
 	menuCtx.textAlign = "center";
 	cycles.forEach(function(cycle) {
 		menuCtx.fillStyle = cycle.colour;
-		menuCtx.fillText(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 30 / 2) + 30 * cycle.id, 5 + FFTEXTOFFSETTOP);
+		menuCtx.fillTextCustom(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 30 / 2) + 30 * cycle.id, 5);
 	});
-};
+}
 
 // ----------------------------------------------------------------------------------------------------------------------
 //  Message/Pause Overlays
@@ -750,7 +791,7 @@ const MESSAGEWINNER = "Round Winner!";
 const MESSAGEDRAW = "Draw!";
 const MESSAGECHAMPION = "Champ!"
 
-const showInputMessage = function (message, id, ready) {
+function showInputMessage(message, id, ready) {
 	INPUTMESSAGE = true;
 	if (ready) {
 		READY = true;
@@ -771,14 +812,14 @@ const showInputMessage = function (message, id, ready) {
 	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
 	
 	// Write Message
-	menuCtx.font = "30px " + FONT;
+	menuCtx.font = `30px ${FONT}`;
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillText(message, menuCanvas.width/2, menuCanvas.height/2 + FFTEXTOFFSETMIDDLE);
+	menuCtx.fillTextCustom(message, menuCanvas.width/2, menuCanvas.height/2);
 }
 
-const showTimeoutMessage = function (messages) {
+function showTimeoutMessage(messages) {
 	MESSAGE = true;
 	
 	let timer = 0;
@@ -792,14 +833,14 @@ const showTimeoutMessage = function (messages) {
 		menuCtx.lineWidth = MENUBORDER;
 		
 		if (timer !== messages.length) {
-			countSound.currentTime = 0; countSound.play();
-			menuCtx.font = 24 * (timer + 3) + "px " + FONT;
-			menuCtx.fillText(messages[timer], menuCanvas.width/2, menuCanvas.height/2 + FFTEXTOFFSETMIDDLE);
+			countSound.playSoundEffect();
+			menuCtx.font = `${24 * (timer + 3)}px ${FONT}`;
+			menuCtx.fillTextCustom(messages[timer], menuCanvas.width/2, menuCanvas.height/2);
 		} else {
 			MESSAGE = false;
 			startAudio(gameMusic);
 			clearInterval(timeout);
-			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+			menuCtx.clearCanvas(menuCanvas);
 			// Ugly: But always needs to trigger after timeout
 			if (OPTIONS.DISAPPEARINGTRAILS) triggerDisappearTrail();
 		}
@@ -809,7 +850,7 @@ const showTimeoutMessage = function (messages) {
 	const timeout = setInterval(timeoutFunction, 1000);
 };
 
-const pause = function () {
+function pause() {
 	const pauseOverlay = loader.images["pauseOverlay"];
 	// Draw transparent overlay
 	menuCtx.globalAlpha = 0.7;
@@ -818,13 +859,13 @@ const pause = function () {
 	// Write Message
 	menuCtx.globalAlpha = 1;
 	menuCtx.fillStyle = "#FFFFFF";
-	menuCtx.font = "24px " + FONT;
+	menuCtx.font = `24px ${FONT}`;
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
-	menuCtx.fillText("Press Back or [O] to return to Options", menuCanvas.width/2, menuCanvas.height/2);
+	menuCtx.fillTextCustom("Press Back or [O] to return to Options", menuCanvas.width/2, menuCanvas.height/2);
 };
 
-const unpause = function () {
+function unpause() {
 	menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 };
 
@@ -832,49 +873,55 @@ const unpause = function () {
 //  Game States
 // ----------------------------------------------------------------------------------------------------------------------
 
-const doTitleState = function (gamestate) {
+function setupState(state) {
+	switch (state) {
+		case STATE.TITLE: setupTitleState(); break;
+		case STATE.OPTION: setupOptionState(); break;
+		case STATE.GAME: setupGameState(); break;
+	}	
+}
+
+function setupTitleState() {
 	//Show Logo
 	const titleImage = loader.images["logo2"];
 	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
-	
+}
+
+function doTitleState(gamestate) {
 	const gamepad = getGamepad(0);
 
-	if (!BUTTONPRESS) {
+	if (!BUTTONPRESSED) {
+		BUTTONPRESSED = true;
 		if (ENTERKEY in keysDown || gamepad.A === true || gamepad.Start === true) {
-			// Clear Logo on Start and move to Options
-			// BUTTONPRESS will be deactivated by Options to prevent pass-through
-			selectSound.currentTime = 0; selectSound.play();
-			BUTTONPRESS = true;
+			// BUTTONPRESSED will be deactivated by Options to prevent pass-through
+			selectSound.playSoundEffect();
 			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 			gamestate = STATE.OPTION;
 		} else if (gamepad.B === true) {
-			// Only works with custom browser config
+			// Works with custom FireFox 'about:config' settings: (not recommended if using the browser regularly)
+			// dom.allow_scripts_to_close_windows: true
 			window.close();
+		} else {
+			BUTTONPRESSED = false;
 		}
 	}
 	return(gamestate);
 };
 
-const doOptionState = function (gamestate) {
+function setupOptionState() {
 	if (gameMusic.volume === 1) fadeAudio(gameMusic);
 	if (menuMusic.volume === 0) startAudio(menuMusic);
-	if (menuMusic.currentTime >= 208) {
-		// Unavoidable delay, but difficult to notice
-		menuMusic.currentTime = 7.25;
-	}
 
-	// Will keep redrawing every frame so need to clear
-	menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
 	// Option Text Settings
-	menuCtx.font = "24px " + FONT;
+	menuCtx.font = `24px ${FONT}`;
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
+}
 
-	// Write Option Text
-	// Some of this positioning is weird
-	menuCtx.fillStyle = OPTIONS.THEME.TEXTALT;
-	menuCtx.fillText("Press Start or [Enter] to Begin", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5);
-	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+function doOptionState(gamestate) {
+	loopAudio(menuMusic, 208, 7.25);
+
+	menuCtx.clearCanvas(menuCanvas);
 
 	// Controller Indicators
 	for (let i = 0; i < OPTIONS.PLAYERCOUNT; i++) {
@@ -886,8 +933,14 @@ const doOptionState = function (gamestate) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
 		}
 	}
-	
+
 	// Write Option Text
+	// Some of this positioning is weird
+	menuCtx.fillStyle = OPTIONS.THEME.TEXTALT;
+	menuCtx.fillTextCustom("Press Start or [Enter] to Begin", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5);
+	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+	
+	// Write Option Text with Dynamic Highlight
 	const optionmessages = ["Players: " + OPTIONS.PLAYERCOUNT,
 				"Wins: " + OPTIONS.WINS,
 				"Theme: " + OPTIONS.THEME.NAME,
@@ -896,33 +949,34 @@ const doOptionState = function (gamestate) {
 	for (let i = 0; i < optionmessages.length; i++) {
 		// Highlight value is updated by controls
 		menuCtx.fillStyle = (i === HIGHLIGHT ? OPTIONS.THEME.TEXTHIGHLIGHT : OPTIONS.THEME.TEXT);
-		menuCtx.fillText(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i));
+		menuCtx.fillTextCustom(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i));
 	}
 	
 	// Handle Option Controls
+	const keyboard = CYCLEKEYCONTROLS[0];
 	const gamepad = getGamepad(0);
-	if (!BUTTONPRESS) {
-		BUTTONPRESS = true;
+	if (!BUTTONPRESSED) {
+		BUTTONPRESSED = true;
 		// Enter/A/Start --> Start the Game
 		if (ENTERKEY in keysDown || gamepad.Start === true) {
-			menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+			menuCtx.clearCanvas(menuCanvas);
 			gamestate = STATE.GAME;
-			selectSound.currentTime = 0; selectSound.play();
+			selectSound.playSoundEffect();
 		// Up --> Move Highlight
-		} else if (CYCLEKEYCONTROLS[0][0] in keysDown || gamepad.Up === true) {
+		} else if (keyboard[DIR.UP] in keysDown || gamepad.Up === true) {
 			console.log(navigator.getGamepads());
 			HIGHLIGHT = mod((HIGHLIGHT - 1), Object.keys(OPTIONS).length);
-			optionSound.currentTime = 0; optionSound.play();
+			optionSound.playSoundEffect();
 		// Down --> Move Highlight
-		} else if (CYCLEKEYCONTROLS[0][2] in keysDown || gamepad.Down === true) { 
+		} else if (keyboard[DIR.DOWN] in keysDown || gamepad.Down === true) { 
 			console.log(navigator.getGamepads());
 			HIGHLIGHT = mod((HIGHLIGHT + 1), Object.keys(OPTIONS).length);
-			optionSound.currentTime = 0; optionSound.play();
+			optionSound.playSoundEffect();
 		// Left/Right --> Change Option
-		} else if ((CYCLEKEYCONTROLS[0][1] in keysDown || gamepad.Left === true) 
-				|| (CYCLEKEYCONTROLS[0][3] in keysDown || gamepad.Right === true)) {
+		} else if ((keyboard[DIR.LEFT] in keysDown || gamepad.Left === true) 
+				|| (keyboard[DIR.RIGHT] in keysDown || gamepad.Right === true)) {
 
-			const left = CYCLEKEYCONTROLS[0][1] in keysDown || gamepad.Left === true;
+			const left = keyboard[DIR.LEFT] in keysDown || gamepad.Left === true;
 			const optionValue = Object.keys(OPTIONS)[HIGHLIGHT];
 			const optionType = typeof OPTIONS[optionValue];
 			switch (optionType) {
@@ -945,7 +999,7 @@ const doOptionState = function (gamestate) {
 					}
 					break;
 			}
-			option2Sound.currentTime = 0; option2Sound.play();
+			option2Sound.playSoundEffect();
 		// Special Options: Fullscreen or Reload Game with Controller
 		} else if (gamepad.Back === true) {
 			// Only works with custom browser config
@@ -953,25 +1007,25 @@ const doOptionState = function (gamestate) {
 		} else if (gamepad.B === true) {
 			window.location.reload();
 		} else {
-			BUTTONPRESS = false;
+			BUTTONPRESSED = false;
 		}
 	} else if (Object.keys(keysDown).length === 0 && gamepad.none()) { 
-		BUTTONPRESS = false;
+		BUTTONPRESSED = false;
 	}
 	return(gamestate);
 };
 
-const doGameState = function (gamestate) {
+function setupGameState() {
 	if (menuMusic.volume === 1) fadeAudio(menuMusic);
-	if (gameMusic.currentTime >= 161) {
-		// Unavoidable delay, but difficult to notice
-		gameMusic.currentTime = 7.3;
-	}
+}
+
+function doGameState(gamestate) {
+	loopAudio(gameMusic, 161, 7.3);
 
 	const gamepad = getGamepad(0);
 
-	if (!BUTTONPRESS && !MESSAGE && !INPUTMESSAGE) {
-		BUTTONPRESS = true;
+	if (!BUTTONPRESSED && !MESSAGE && !INPUTMESSAGE) {
+		BUTTONPRESSED = true;
 		// Pause the Game
 		if (ENTERKEY in keysDown || ESCAPEKEY in keysDown || gamepad.Start === true) {
 			PAUSE = !PAUSE;
@@ -985,7 +1039,7 @@ const doGameState = function (gamestate) {
 			gamestate = STATE.OPTION;
 			return(gamestate);
 		} else {
-			BUTTONPRESS = false;
+			BUTTONPRESSED = false;
 		}
 	
 		// ie. Normal Gameplay
@@ -997,30 +1051,31 @@ const doGameState = function (gamestate) {
 				// Show Start Message if necessary
 				showInputMessage(MESSAGEREADY, -1, true);
 				
-				trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
-				cycleCtx.clearRect(0, 0, cycleCanvas.width, cycleCanvas.height);
+				trailCtx.clearCanvas(trailCanvas);
+				cycleCtx.clearCanvas(cycleCanvas);
 				initializeCycles();
 
+				DISAPPEAR.started = false;
 				RESTART = false;
 			}
 			update();
 			render();
 		}
 	} else if (INPUTMESSAGE) {
-		BUTTONPRESS = true;
+		BUTTONPRESSED = true;
 		const gamepadWinner = getGamepad(INPUTTER);
 		if (ENTERKEY in keysDown || gamepadWinner.A === true || gamepadWinner.Start === true) {
 			INPUTMESSAGE = false;
 			if (READY) {
-				BUTTONPRESS = false; // Or else can freeze the game for everyone if hold down on Ready
+				BUTTONPRESSED = false; // Or else can freeze the game for everyone if hold down on Ready
 				READY = false;
 				showTimeoutMessage(MESSAGECOUNTDOWN);
 			}
 		} else {
-			BUTTONPRESS = false;
+			BUTTONPRESSED = false;
 		}
 	} else if (Object.keys(keysDown).length === 0 && gamepad.none()) { 
-		BUTTONPRESS = false;
+		BUTTONPRESSED = false;
 	}
 	return(gamestate);
 };
@@ -1029,7 +1084,7 @@ const doGameState = function (gamestate) {
 //  Load
 // ----------------------------------------------------------------------------------------------------------------------
 
-const imageSources = function () {
+function imageSources() {
 	const sources = [];
 	for (let i = 0; i < MAXPLAYERCOUNT; i++) {
 		sources.push("cycle" + i);
@@ -1044,43 +1099,68 @@ const imageSources = function () {
 
 function Loader(sources) {
 	this.images = {};
-    let loadedImageCount = 0;
+	let loadedImageCount = 0;
 
-    for (let i = 0; i < sources.length; i++){
-        var img = new Image();
-        img.src = "img/" + sources[i] + ".png";
-        img.onload = imageLoaded;
-        this.images[sources[i]] = img;
-    }
+	for (let i = 0; i < sources.length; i++){
+		var img = new Image();
+		img.src = "img/" + sources[i] + ".png";
+		img.onload = imageLoaded;
+		this.images[sources[i]] = img;
+	}
 
-    function imageLoaded() {
-        loadedImageCount++;
-        if (loadedImageCount === sources.length) {
-        	// Loading done, start application
-            main(STATE.TITLE); 
-        }
-    }
+	function imageLoaded() {
+		loadedImageCount++;
+		if (loadedImageCount === sources.length) {
+			// Loading done, start application
+			main(STATE.TITLE, true); 
+		}
+	}
 }
+
+// ----------------------------------------------------------------------------------------------------------------------
+//  Stats
+// ----------------------------------------------------------------------------------------------------------------------
+
+window.countFPS = (function () {
+  var lastLoop = (new Date()).getMilliseconds();
+  var count = 1;
+  var fps = 0;
+
+  return function () {
+	var currentLoop = (new Date()).getMilliseconds();
+	if (lastLoop > currentLoop) {
+		fps = count;
+		count = 1;
+	} else {
+		count += 1;
+	}
+	lastLoop = currentLoop;
+	return fps;
+  };
+}());
 
 // ----------------------------------------------------------------------------------------------------------------------
 //  Main
 // ----------------------------------------------------------------------------------------------------------------------
 
-const main = function (gamestate) {
-	
-	switch (gamestate) {
-		case STATE.TITLE: 
-			gamestate = doTitleState(gamestate);
-			break;
-		case STATE.OPTION: 
-			gamestate = doOptionState(gamestate);
-			break;
-		case STATE.GAME: 
-			gamestate = doGameState(gamestate);
-			break;
+function main(state, newstate) {
+
+	if (newstate) {
+		setupState(state);
 	}
 
-	requestAnimationFrame(function() { main(gamestate) });
+	let nextstate;
+	switch (state) {
+		case STATE.TITLE: nextstate = doTitleState(state); break;
+		case STATE.OPTION: nextstate = doOptionState(state); break;
+		case STATE.GAME: nextstate = doGameState(state); break;
+	}
+
+	newstate = (nextstate !== state ? true : false);
+
+	//console.log(countFPS());
+
+	requestAnimationFrame(function() { main(nextstate, newstate) });
 };
 
 // Preloads and holds images, then it calls main
