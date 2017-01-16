@@ -94,6 +94,7 @@ const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
 				[],
 				[],
 				[],
+				[],
 				[187,219,221,220,189], //+[]\-
 				[80,186,222,85,82], //p;'ur
 				[73,74,75,76,79], //ijklo
@@ -182,6 +183,7 @@ document.onfullscreenchange = function (event) {
 }
 
 // LET THERE BE MUTABLE GLOBAL VARIABLES
+// Ground Zero for refactoring
 // Mutable to reset, ie. map to zero?
 let SCORES = new Array(MAXPLAYERCOUNT).fill(0);
 const cycles = [];
@@ -606,16 +608,19 @@ function checkWinner() {
 		SCORES[cycle.id] += 1;
 		if (SCORES[cycle.id] === OPTIONS.WINS) {
 			championSound.playSoundEffect();
+			gameMusic.playbackRate = 1;
 			showInputMessage(MESSAGECHAMPION, cycle.id);
 		} else {
 			winnerSound.playSoundEffect();
-			showInputMessage(MESSAGEWINNER, cycle.id);
+			gameMusic.playbackRate = 1;
+			showTimeoutMessage(MESSAGEWINNER, cycle.id);
 		}
 		RESTART = true;
 		return;
 	} else if (livingCycles.length === 0) {
 		drawSound.playSoundEffect();
-		showInputMessage(MESSAGEDRAW, -1);
+		gameMusic.playbackRate = 1;
+		showTimeoutMessage(MESSAGEDRAW, -1);
 		RESTART = true;
 		return;
 	}
@@ -791,51 +796,39 @@ const MESSAGEWINNER = "Round Winner!";
 const MESSAGEDRAW = "Draw!";
 const MESSAGECHAMPION = "Champ!"
 
-function showInputMessage(message, id, ready) {
+function showInputMessage(message, id) {
 	INPUTMESSAGE = true;
-	if (ready) {
-		READY = true;
-	}
-	gameMusic.playbackRate = 1;
 
-	// Draw Message Box
-	if (id !== -1) {
-		menuCtx.strokeStyle = cycles[id].colour;
-		INPUTTER = id;
-	} else {
-		menuCtx.strokeStyle = OPTIONS.THEME.TEXT; 
-		INPUTTER = 0;
-	}
-	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
-	menuCtx.lineWidth = MENUBORDER;
-	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
-	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
-	
-	// Write Message
-	menuCtx.font = `30px ${FONT}`;
-	menuCtx.textAlign = "center";
-	menuCtx.textBaseline = "middle";
-	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillTextCustom(message, menuCanvas.width/2, menuCanvas.height/2);
+	drawMessage(message, id);
+
+	// Cheating, since this only used for Champion message right now
+	menuCtx.font = `15px ${FONT}`;
+	menuCtx.fillTextCustom("A to Rematch, B to Return", menuCanvas.width/2, menuCanvas.height/2 + 30);
 }
 
-function showTimeoutMessage(messages) {
+function showTimeoutMessage(message, id) {
+	MESSAGE = true;
+
+	timeoutFunction = function() {
+		MESSAGE = false;
+	}
+
+	drawMessage(message, id);
+
+	const timeout = setTimeout(timeoutFunction, 3000);
+};
+
+function showCountdown(countdown) {
 	MESSAGE = true;
 	
 	let timer = 0;
 	timeoutFunction = function() {
-		// Clear old text
-		menuCtx.clearRect(menuCanvas.width/2 - 130, menuCanvas.height/2 - 60, 260, 120);
-		// Write Message
-		menuCtx.textAlign = "center";
-		menuCtx.textBaseline = "middle";
-		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-		menuCtx.lineWidth = MENUBORDER;
+		clearMessage();
 		
-		if (timer !== messages.length) {
+		if (timer !== countdown.length) {
 			countSound.playSoundEffect();
 			menuCtx.font = `${24 * (timer + 3)}px ${FONT}`;
-			menuCtx.fillTextCustom(messages[timer], menuCanvas.width/2, menuCanvas.height/2);
+			menuCtx.fillTextCustom(countdown[timer], menuCanvas.width/2, menuCanvas.height/2);
 		} else {
 			MESSAGE = false;
 			startAudio(gameMusic);
@@ -846,9 +839,42 @@ function showTimeoutMessage(messages) {
 		}
 		timer += 1;
 	}
-	timeoutFunction();
+
+	// Write Initial Message
+	drawMessage(MESSAGEREADY, -1)
+
 	const timeout = setInterval(timeoutFunction, 1000);
 };
+
+function drawMessage(message, id) {
+	if (id !== -1) {
+		menuCtx.strokeStyle = cycles[id].colour;
+		INPUTTER = id;
+	} else {
+		menuCtx.strokeStyle = OPTIONS.THEME.TEXT; 
+		INPUTTER = 0;
+	} 
+
+	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
+	menuCtx.lineWidth = MENUBORDER;
+	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
+	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
+	menuCtx.font = `30px ${FONT}`;
+	menuCtx.textAlign = "center";
+	menuCtx.textBaseline = "middle";
+	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+	menuCtx.fillTextCustom(message, menuCanvas.width/2, menuCanvas.height/2);
+}
+
+function clearMessage() {
+	// Clear old text
+	menuCtx.clearRect(menuCanvas.width/2 - 130, menuCanvas.height/2 - 60, 260, 120);
+	// Write Message
+	menuCtx.textAlign = "center";
+	menuCtx.textBaseline = "middle";
+	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+	menuCtx.lineWidth = MENUBORDER;
+}
 
 function pause() {
 	const pauseOverlay = loader.images["pauseOverlay"];
@@ -1024,6 +1050,7 @@ function doGameState(gamestate) {
 
 	const gamepad = getGamepad(0);
 
+	// The message display is an awful mess
 	if (!BUTTONPRESSED && !MESSAGE && !INPUTMESSAGE) {
 		BUTTONPRESSED = true;
 		// Pause the Game
@@ -1033,9 +1060,7 @@ function doGameState(gamestate) {
 		// Go back to the Option Screen from Pause
 		} else if (PAUSE && (OKEY in keysDown || gamepad.Back === true)) {
 			unpause();
-			PAUSE = false;
-			RESTART = true;
-			SCORES = SCORES.map(function(value) { return value = 0; });
+			restartGameState();
 			gamestate = STATE.OPTION;
 			return(gamestate);
 		} else {
@@ -1046,17 +1071,17 @@ function doGameState(gamestate) {
 		if(!PAUSE) {
 			// Reset Cycles if new Round
 			if (RESTART) {
-				// Clear Scores if necessary
-				if (SCORES.includes(OPTIONS.WINS)) SCORES = SCORES.map(function(value) { return value = 0; });
-				// Show Start Message if necessary
-				showInputMessage(MESSAGEREADY, -1, true);
-				
 				trailCtx.clearCanvas(trailCanvas);
 				cycleCtx.clearCanvas(cycleCanvas);
 				initializeCycles();
 
 				DISAPPEAR.started = false;
 				RESTART = false;
+
+				// Full Restart
+				if (SCORES.includes(OPTIONS.WINS)) SCORES = SCORES.map(function(value) { return value = 0; }); 
+			
+ 				showCountdown(MESSAGECOUNTDOWN);
 			}
 			update();
 			render();
@@ -1066,11 +1091,11 @@ function doGameState(gamestate) {
 		const gamepadWinner = getGamepad(INPUTTER);
 		if (ENTERKEY in keysDown || gamepadWinner.A === true || gamepadWinner.Start === true) {
 			INPUTMESSAGE = false;
-			if (READY) {
-				BUTTONPRESSED = false; // Or else can freeze the game for everyone if hold down on Ready
-				READY = false;
-				showTimeoutMessage(MESSAGECOUNTDOWN);
-			}
+		} else if (OKEY in keysDown || gamepadWinner.B === true) {
+			INPUTMESSAGE = false;
+			restartGameState();
+			gamestate = STATE.OPTION;
+			return(gamestate);
 		} else {
 			BUTTONPRESSED = false;
 		}
@@ -1079,6 +1104,12 @@ function doGameState(gamestate) {
 	}
 	return(gamestate);
 };
+
+function restartGameState() {
+	PAUSE = false;
+	RESTART = true;
+	SCORES = SCORES.map(function(value) { return value = 0; });
+}
 
 // ----------------------------------------------------------------------------------------------------------------------
 //  Load

@@ -2,14 +2,12 @@ Remaining Bugs:
 - Going immediately sideways breaks Disappearing Trail
 - Boosting extends your hitbox forward in a way that could be subtle but awkward. The problem is the hitbox x and y can't be placed backwards onto their own trails to accomodate for the boost travel or it causes a suicide.
 - Pausing doesn't pause the timer for boosting, wasting your boost but probably also recharging it
-- Occasional Lag
+- Occasional Lag (Maybe I can store navigator array of controllers instead of generating each time?)
 - Music loop is a bit rough (setting Audio.currentTime has a delay)
 - 8 Player only works in FireFox
 - Boost & Disappearing Trail have issues at the same time - ie. while boosting the disappearing speeds up but can't round corners, lengthening your trail
 
 Playtest 1:
-- Messages should just finish on a timer without input
-- The 'Champ' message should offer option to return to menu or continue
 - Bug where one player spawned sideways?
 
 - Oh yeah, massive refactoring is necessary
