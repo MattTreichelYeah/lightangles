@@ -555,7 +555,6 @@ function movement(cycle) {
 };
 
 function collisionCheck(cycle) {
-
 	// Check Boundary Collision
 	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength > cycleCanvas.width || cycle.yhb + cycle.yhbLength > cycleCanvas.height) {
 		killCycle(cycle);
