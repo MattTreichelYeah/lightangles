@@ -14,6 +14,9 @@ const ENTERKEY = 13;
 const ESCAPEKEY = 27;
 const OKEY = 79;
 
+// Controller
+const WIIUPROCONTROLLER = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
+
 // Hard Game Rules
 const MAXPLAYERCOUNT = 16;
 
@@ -418,14 +421,26 @@ function getGamepad(id) {
 		if (gamepad) {
 			// 0.3 being makeshift deadzone
 			try {
-				controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
-				controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
-				controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
-				controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
-				controls.Start = gamepad.buttons[9].pressed;
-				controls.Back = gamepad.buttons[8].pressed;
-				controls.A = gamepad.buttons[0].pressed;
-				controls.B = gamepad.buttons[1].pressed;
+				// Browser stopped reading Wii U Dpad Inputs, so needs an alternate mapping
+				if (gamepad.id !== WIIUPROCONTROLLER) {
+					controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
+					controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
+					controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
+					controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
+					controls.Start = gamepad.buttons[9].pressed;
+					controls.Back = gamepad.buttons[8].pressed;
+					controls.A = gamepad.buttons[0].pressed;
+					controls.B = gamepad.buttons[1].pressed;
+				} else {
+					controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
+					controls.Left = gamepad.buttons[14].pressed || gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
+					controls.Down = gamepad.buttons[13].pressed || gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
+					controls.Right = gamepad.buttons[15].pressed || gamepad.buttons[2].pressed || gamepad.axes[0] > 0.3;
+					controls.Start = gamepad.buttons[9].pressed;
+					controls.Back = gamepad.buttons[8].pressed;
+					controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
+					controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;					
+				}
 			} catch (err) {
 				console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
 			}
@@ -982,7 +997,7 @@ function doOptionState(gamestate) {
 	const gamepad = getGamepad(0);
 	if (!BUTTONPRESSED) {
 		BUTTONPRESSED = true;
-		// Enter/A/Start --> Start the Game
+		// Enter/Start --> Start the Game
 		if (ENTERKEY in keysDown || gamepad.Start === true) {
 			menuCtx.clearCanvas(menuCanvas);
 			gamestate = STATE.GAME;
