@@ -81,7 +81,7 @@ const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(255,0,255,255)", //magenta
 				"rgba(119,119,119,255)", //grey
 				"rgba(255,165,255,255)", //pink
-				"rgba(0,0,119,255)", //darkblue
+				"rgba(255,223,119,255)", //beige
 				"rgba(119,119,0,255)", //olive
 				"rgba(0,119,0,255)", //green
 				"rgba(119,0,0,255)", //maroon
