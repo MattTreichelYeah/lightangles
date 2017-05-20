@@ -14,8 +14,10 @@ const ENTERKEY = 13;
 const ESCAPEKEY = 27;
 const OKEY = 79;
 
-// Controller
-const WIIUPROCONTROLLER = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
+// Controller (XInput Assumed Default)
+const CONTROLLERWIIUPRO = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
+const CONTROLLERJOYCONL = "057e-2006-Wireless Gamepad";
+const CONTROLLERJOYCONR = "057e-2007-Wireless Gamepad";
 
 // Hard Game Rules
 const MAXPLAYERCOUNT = 16;
@@ -422,7 +424,34 @@ function getGamepad(id) {
 			// 0.3 being makeshift deadzone
 			try {
 				// Browser stopped reading Wii U Dpad Inputs, so needs an alternate mapping
-				if (gamepad.id !== WIIUPROCONTROLLER) {
+				if (gamepad.id === CONTROLLERWIIUPRO) {
+					controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
+					controls.Left = gamepad.buttons[14].pressed || gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
+					controls.Down = gamepad.buttons[13].pressed || gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
+					controls.Right = gamepad.buttons[15].pressed || gamepad.buttons[2].pressed || gamepad.axes[0] > 0.3;
+					controls.Start = gamepad.buttons[9].pressed;
+					controls.Back = gamepad.buttons[8].pressed;
+					controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
+					controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;
+				} else if (gamepad.id === CONTROLLERJOYCONL) {
+					controls.Up = gamepad.buttons[2].pressed;
+					controls.Left = gamepad.buttons[0].pressed;
+					controls.Down = gamepad.buttons[1].pressed;
+					controls.Right = gamepad.buttons[3].pressed;
+					controls.Start = gamepad.buttons[8].pressed;
+					controls.Back = gamepad.buttons[10].pressed;
+					controls.A = gamepad.buttons[14].pressed;
+					controls.B = gamepad.buttons[15].pressed;
+				} else if (gamepad.id === CONTROLLERJOYCONR) {
+					controls.Up = gamepad.buttons[1].pressed;
+					controls.Left = gamepad.buttons[3].pressed;
+					controls.Down = gamepad.buttons[2].pressed;
+					controls.Right = gamepad.buttons[0].pressed;
+					controls.Start = gamepad.buttons[9].pressed;
+					controls.Back = gamepad.buttons[11].pressed;
+					controls.A = gamepad.buttons[14].pressed;
+					controls.B = gamepad.buttons[15].pressed;
+				} else {
 					controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
 					controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
 					controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
@@ -431,15 +460,6 @@ function getGamepad(id) {
 					controls.Back = gamepad.buttons[8].pressed;
 					controls.A = gamepad.buttons[0].pressed;
 					controls.B = gamepad.buttons[1].pressed;
-				} else {
-					controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
-					controls.Left = gamepad.buttons[14].pressed || gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
-					controls.Down = gamepad.buttons[13].pressed || gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
-					controls.Right = gamepad.buttons[15].pressed || gamepad.buttons[2].pressed || gamepad.axes[0] > 0.3;
-					controls.Start = gamepad.buttons[9].pressed;
-					controls.Back = gamepad.buttons[8].pressed;
-					controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
-					controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;					
 				}
 			} catch (err) {
 				console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
@@ -969,6 +989,8 @@ function doOptionState(gamestate) {
 		const gamepad = getGamepad(i);
 		if (gamepad.A === true) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i, menuCanvas.height/2 - 30 * 5 - 5, 20, 20);
+			//Lazy Gamepad Button Testing
+			//navigator.getGamepads()[0].buttons.forEach((button, index) => console.log(index + " " + button.pressed));
 		} else {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
 		}
