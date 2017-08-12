@@ -17,7 +17,11 @@ const OKEY = 79;
 // Controller (XInput Assumed Default)
 const CONTROLLERWIIUPRO = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
 const CONTROLLERJOYCONL = "057e-2006-Wireless Gamepad";
+const CONTROLLERJOYCONL2 = "57e-2006-Joy-Con (L)";
+const CONTROLLERJOYCONL3 = "Joy-Con (L) (Vendor: 057e Product: 2006)";
 const CONTROLLERJOYCONR = "057e-2007-Wireless Gamepad";
+const CONTROLLERJOYCONR2 = "57e-2007-Joy-Con (R)";
+const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
 
 // Hard Game Rules
 const MAXPLAYERCOUNT = 16;
@@ -424,42 +428,51 @@ function getGamepad(id) {
 			// 0.3 being makeshift deadzone
 			try {
 				// Browser stopped reading Wii U Dpad Inputs, so needs an alternate mapping
-				if (gamepad.id === CONTROLLERWIIUPRO) {
-					controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
-					controls.Left = gamepad.buttons[14].pressed || gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
-					controls.Down = gamepad.buttons[13].pressed || gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
-					controls.Right = gamepad.buttons[15].pressed || gamepad.buttons[2].pressed || gamepad.axes[0] > 0.3;
-					controls.Start = gamepad.buttons[9].pressed;
-					controls.Back = gamepad.buttons[8].pressed;
-					controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
-					controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;
-				} else if (gamepad.id === CONTROLLERJOYCONL) {
-					controls.Up = gamepad.buttons[2].pressed;
-					controls.Left = gamepad.buttons[0].pressed;
-					controls.Down = gamepad.buttons[1].pressed;
-					controls.Right = gamepad.buttons[3].pressed;
-					controls.Start = gamepad.buttons[8].pressed;
-					controls.Back = gamepad.buttons[10].pressed;
-					controls.A = gamepad.buttons[14].pressed;
-					controls.B = gamepad.buttons[15].pressed;
-				} else if (gamepad.id === CONTROLLERJOYCONR) {
-					controls.Up = gamepad.buttons[1].pressed;
-					controls.Left = gamepad.buttons[3].pressed;
-					controls.Down = gamepad.buttons[2].pressed;
-					controls.Right = gamepad.buttons[0].pressed;
-					controls.Start = gamepad.buttons[9].pressed;
-					controls.Back = gamepad.buttons[11].pressed;
-					controls.A = gamepad.buttons[14].pressed;
-					controls.B = gamepad.buttons[15].pressed;
-				} else {
-					controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
-					controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
-					controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
-					controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
-					controls.Start = gamepad.buttons[9].pressed;
-					controls.Back = gamepad.buttons[8].pressed;
-					controls.A = gamepad.buttons[0].pressed;
-					controls.B = gamepad.buttons[1].pressed;
+				switch (gamepad.id) {
+					case CONTROLLERJOYCONL:
+					case CONTROLLERJOYCONL2:
+					case CONTROLLERJOYCONL3:
+						controls.Up = gamepad.buttons[2].pressed;
+						controls.Left = gamepad.buttons[0].pressed;
+						controls.Down = gamepad.buttons[1].pressed;
+						controls.Right = gamepad.buttons[3].pressed;
+						controls.Start = gamepad.buttons[8].pressed;
+						controls.Back = gamepad.buttons[10].pressed;
+						controls.A = gamepad.buttons[14].pressed;
+						controls.B = gamepad.buttons[15].pressed;
+						break;
+					case CONTROLLERJOYCONR:
+					case CONTROLLERJOYCONR2:
+					case CONTROLLERJOYCONR3:
+						controls.Up = gamepad.buttons[1].pressed;
+						controls.Left = gamepad.buttons[3].pressed;
+						controls.Down = gamepad.buttons[2].pressed;
+						controls.Right = gamepad.buttons[0].pressed;
+						controls.Start = gamepad.buttons[9].pressed;
+						controls.Back = gamepad.buttons[11].pressed;
+						controls.A = gamepad.buttons[14].pressed;
+						controls.B = gamepad.buttons[15].pressed;
+						break;
+					case CONTROLLERWIIUPRO:
+						controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
+						controls.Left = gamepad.buttons[14].pressed || gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
+						controls.Down = gamepad.buttons[13].pressed || gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
+						controls.Right = gamepad.buttons[15].pressed || gamepad.buttons[2].pressed || gamepad.axes[0] > 0.3;
+						controls.Start = gamepad.buttons[9].pressed;
+						controls.Back = gamepad.buttons[8].pressed;
+						controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
+						controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;
+						break;
+					default:
+						controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
+						controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
+						controls.Down = gamepad.buttons[13].pressed || gamepad.axes[1] > 0.3;
+						controls.Right = gamepad.buttons[15].pressed || gamepad.axes[0] > 0.3;
+						controls.Start = gamepad.buttons[9].pressed;
+						controls.Back = gamepad.buttons[8].pressed;
+						controls.A = gamepad.buttons[0].pressed;
+						controls.B = gamepad.buttons[1].pressed;
+						break;
 				}
 			} catch (err) {
 				console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
