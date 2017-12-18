@@ -50,8 +50,8 @@ const OPTIONS = {
 // Internal - Constant or Indirectly Changeable
 const PROPERTIES = {
 	CYCLESPEED: 4,
-	CYCLELENGTH: 20,
-	CYCLEWIDTH: 20,
+	CYCLELENGTH: 20, // Assuming vertical orientation
+	CYCLEWIDTH: 10,
 	TRAILWIDTH: 4,
 	DISAPPEARTIME: 1000,
 	ADJUSTPLAYERCOUNT: function (playercount) {
@@ -76,6 +76,8 @@ const DISAPPEAR = {
 
 // Actual cycle and trail are images to avoid automatic canvas anti-aliasing
 // This ultimately applies to just menu indicators
+// Scratch the above - this is used to avoid suicide on initial drawn trail,
+// and due to an canvas quirk have to be reassigned later to whatever the browser slightly adjusts the raw colour to (see following function)
 const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(0,0,255,255)", //blue
 				"rgba(255,223,0,255)", //yellow
@@ -92,6 +94,15 @@ const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(0,119,119,255)", //teal
 				"rgba(119,0,119,255)", //purple
 				"rgba(165,165,165,255)"]; //silver
+
+// Canvas doesn't output exact colour of image apparently, need to read the colour after drawn
+function setColor(cycle) {
+	menuCtx.drawImage(cycle.image, 0, 0, 1, 1);
+	const pixel = menuCtx.getImageData(0, 0, 1, 1).data;
+	const pixelcolour = "rgba(" + pixel[0] + "," + pixel[1] + "," + pixel[2] + "," + pixel[3] + ")";
+	cycle.colour = pixelcolour;
+	menuCtx.clearRect(0, 0, 1, 1);
+}
 
 // Note: These correspond with DIR Enumeration, and Boost
 // Keyboard Controls provided for players 1-2 for testing 
@@ -344,29 +355,28 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.orientation = ((this.direction === DIR.LEFT || this.direction === DIR.RIGHT) ? ORI.HORIZONTAL : ORI.VERTICAL);
 	this.xLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.CYCLELENGTH : PROPERTIES.CYCLEWIDTH);
 	this.yLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.CYCLEWIDTH : PROPERTIES.CYCLELENGTH);
-	// Similar setup to cycle xLength and yLength
-	this.xhbLength = ((this.orientation === ORI.HORIZONTAL) ? this.speed * this.boost : PROPERTIES.TRAILWIDTH);
-	this.yhbLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.TRAILWIDTH : this.speed * this.boost); 
 	// Pixel Images used because anti-aliasing applied to drawn canvas rectangles
 	this.image = loader.images["cycle" + id];
 	// Turns is used to trace path and erase on death
 	this.turns = [[this.x, this.y]]; //Start Point
 
 	// Easiest to set Hitbox x and y as always top left corner by case for easiest collision detection
-	// Hitbox can't be centered right now because it would overlap trail and cause suicide
-	this.setHitbox = function (direction) {
+	// Hitbox is intended to cover from a quarter from the cycle's front, back to the amount of speed * boost
+	this.setHitbox = function (direction, orientation) {
+		this.xhbLength = ((orientation === ORI.HORIZONTAL) ? this.speed * this.boost : PROPERTIES.TRAILWIDTH);
+		this.yhbLength = ((orientation === ORI.HORIZONTAL) ? PROPERTIES.TRAILWIDTH : this.speed * this.boost);
 		if (direction === DIR.RIGHT) {
-			this.xhb = this.x; 
+			this.xhb = this.x - this.xhbLength + PROPERTIES.CYCLELENGTH / 4; 
 			this.yhb = this.y - PROPERTIES.TRAILWIDTH/2;
 		} else if (direction === DIR.LEFT) {
-			this.xhb = this.x - this.xhbLength; 
+			this.xhb = this.x - PROPERTIES.CYCLELENGTH / 4; 
 			this.yhb = this.y - PROPERTIES.TRAILWIDTH/2;
 		} else if (direction === DIR.UP) {
 			this.xhb = this.x - PROPERTIES.TRAILWIDTH/2; 
-			this.yhb = this.y - this.yhbLength;
+			this.yhb = this.y - PROPERTIES.CYCLELENGTH / 4;			
 		} else if (direction === DIR.DOWN) {
 			this.xhb = this.x - PROPERTIES.TRAILWIDTH/2; 
-			this.yhb = this.y;
+			this.yhb = this.y - this.yhbLength + PROPERTIES.CYCLELENGTH / 4;
 		}
 	}
 
@@ -385,7 +395,8 @@ function initializeCycles() {
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP);
 		cycles.push(new Cycle(i, cyclestarts[i][0], cyclestarts[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
-		cycles[i].setHitbox(initialDirection);
+		setColor(cycles[i]);
+		cycles[i].setHitbox(initialDirection, ORI.VERTICAL);
 	}
 };
 	
@@ -551,11 +562,36 @@ function movement(cycle) {
 		cycle.directionPrev = cycle.direction;
 	}
 
-	// Update location and add trail
+	// Update location
 	switch (cycle.direction) {
 		case DIR.UP:
 			cycle.x = cycle.x;
 			cycle.y = cycle.y - cycle.speed * cycle.boost;
+			break;
+		case DIR.LEFT:
+			cycle.x = cycle.x - cycle.speed * cycle.boost;
+			cycle.y = cycle.y;
+			break;
+		case DIR.DOWN:
+			cycle.x = cycle.x;
+			cycle.y = cycle.y + cycle.speed * cycle.boost;
+			break;
+		case DIR.RIGHT:
+			cycle.x = cycle.x + cycle.speed * cycle.boost;
+			cycle.y = cycle.y;
+			break;
+		default:
+			cycle.x = cycle.x;
+			cycle.y = cycle.y;
+	}
+
+	// Need to update hitbox coordinates with movement
+	cycle.setHitbox(cycle.direction, cycle.orientation);
+};
+
+function drawTrail(cycle) {
+	switch (cycle.direction) {
+		case DIR.UP:
 			trailCtx.drawImage(
 				cycle.image, //image
 				cycle.x - PROPERTIES.TRAILWIDTH/2, //x
@@ -564,8 +600,6 @@ function movement(cycle) {
 				cycle.speed * cycle.boost); //yLength
 			break;
 		case DIR.LEFT:
-			cycle.x = cycle.x - cycle.speed * cycle.boost;
-			cycle.y = cycle.y;
 			trailCtx.drawImage(
 				cycle.image,
 				cycle.x,
@@ -574,8 +608,6 @@ function movement(cycle) {
 				PROPERTIES.TRAILWIDTH);
 			break;
 		case DIR.DOWN:
-			cycle.x = cycle.x;
-			cycle.y = cycle.y + cycle.speed * cycle.boost;
 			trailCtx.drawImage(
 				cycle.image,
 				cycle.x - PROPERTIES.TRAILWIDTH/2,
@@ -584,8 +616,6 @@ function movement(cycle) {
 				cycle.speed * cycle.boost);
 			break;
 		case DIR.RIGHT:
-			cycle.x = cycle.x + cycle.speed * cycle.boost;
-			cycle.y = cycle.y;
 			trailCtx.drawImage(
 				cycle.image,
 				cycle.x - cycle.speed * cycle.boost,
@@ -593,14 +623,8 @@ function movement(cycle) {
 				cycle.speed * cycle.boost,
 				PROPERTIES.TRAILWIDTH);
 			break;
-		default:
-			cycle.x = cycle.x;
-			cycle.y = cycle.y;
-	}
-
-	// Need to update hitbox coordinates with movement
-	cycle.setHitbox(cycle.direction);
-};
+	}	
+}
 
 function collisionCheck(cycle) {
 	// Check Boundary Collision
@@ -631,17 +655,28 @@ function collisionCheck(cycle) {
 	});
 	
 	// Check Trail Collision
+	checkTrailCollision(cycle, false);
+};
+
+function checkTrailCollision(cycle, checkSelf) {
 	// Image Data is RGBαRGBαRGBα... of each pixel in selection
 	// Note that getImageData() & files written to cycleCanvas create a security issue, so game must be run on a server or annoying options set to allow images
 	const hitbox = trailCtx.getImageData(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength).data;
 	for (let i = 0; i < hitbox.length; i += 4) {
 		pixelcolour = "rgba(" + hitbox[i] + "," + hitbox[i+1] + "," + hitbox[i+2] + "," + hitbox[i+3] + ")";
-		if (pixelcolour !== "rgba(0,0,0,0)") { // rgba(0,0,0,0) is transparent black, ie. default background
-			killCycle(cycle);
-			return;
+		if (checkSelf) {
+			if (pixelcolour !== "rgba(0,0,0,0)") {
+				killCycle(cycle);
+				return;
+			}			
+		} else {
+			if (pixelcolour !== "rgba(0,0,0,0)" && pixelcolour !== cycle.colour) { // rgba(0,0,0,0) is transparent black, ie. default background
+				killCycle(cycle);
+				return;
+			}
 		}
 	}
-};
+}
 
 function checkWinner() {
 	let livingCycles = [];
@@ -776,6 +811,8 @@ function update() {
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
 			movement(cycle);
+			checkTrailCollision(cycle, true);
+			if (cycle.alive === true) drawTrail(cycle); // Must be done after self collision check
 		}
 	});
 	
