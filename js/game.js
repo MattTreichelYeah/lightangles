@@ -215,6 +215,12 @@ let INPUTMESSAGE = false;
 let INPUTTER = 0;
 let READY = false;
 let BUTTONPRESSED = false;
+let TITLEPOSITIONX = 0;
+let TITLEPOSITIONY = 0;
+let TITLESCALE = 0;
+let TITLESCALEUP = true;
+let TITLEPOSITIONUP = true;
+let TITLEMUSICJAMMIN = false;
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Enumerations
@@ -992,12 +998,20 @@ function setupState(state) {
 }
 
 function setupTitleState() {
-	//Show Logo
-	const titleImage = loader.images["logo2"];
-	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
+	// //Show Logo
+	// const titleImage = loader.images["logo2"];
+	// menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
+	TITLEMUSICJAMMIN = false;
+	setTimeout(() => { TITLEMUSICJAMMIN = true}, 5400);
 }
 
 function doTitleState(gamestate) {
+	//Show Logo
+	menuCtx.clearCanvas(menuCanvas);
+	const titleImage = loader.images["logo2"];
+	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2 - TITLESCALE / 2 - TITLEPOSITIONX, menuCanvas.height/2 - titleImage.height/2 - TITLESCALE / 2 - TITLEPOSITIONY, titleImage.width + TITLESCALE, titleImage.height + TITLESCALE);
+	incrementImageScale();
+
 	const gamepad = getGamepad(0);
 
 	if (!BUTTONPRESSED) {
@@ -1017,6 +1031,27 @@ function doTitleState(gamestate) {
 	}
 	return(gamestate);
 };
+
+function incrementImageScale() {
+	// if (TITLESCALEUP) {
+	// 	TITLESCALE += 2;
+	// 	if (TITLESCALE > 30) TITLESCALEUP = false;
+	// } else {
+	// 	TITLESCALE -= 2;
+	// 	if (TITLESCALE < 0) TITLESCALEUP = true;
+	// }
+	if (TITLEMUSICJAMMIN) {
+		if (TITLEPOSITIONUP) {
+			TITLEPOSITIONY += 1.5;
+			// TITLEPOSITIONX += 0.5;
+			if (TITLEPOSITIONY > 13) TITLEPOSITIONUP = false;
+		} else {
+			TITLEPOSITIONY -= 0.2;
+			// TITLEPOSITIONX -= 0.5;
+			if (TITLEPOSITIONY < 0) TITLEPOSITIONUP = true;
+		}
+	}
+}
 
 function setupOptionState() {
 	if (gameMusic.volume === 1) fadeAudio(gameMusic);
