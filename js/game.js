@@ -32,7 +32,7 @@ function Theme(name, colour, background, text, textHighlight) {
 	this.BACKGROUND = background;
 	this.TEXT = text;
 	this.TEXTHIGHLIGHT = textHighlight;
-	this.TEXTALT = "#777777";
+	this.TEXTALT = "#A1A4A4";
 }
 const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack.png')", "#FFFFFF", "#FF0000");
 const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite.png')", "#000000", "#FF0000");
