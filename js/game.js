@@ -1001,11 +1001,11 @@ function setupTitleState() {
 	// //Show Logo
 	// const titleImage = loader.images["logo2.svg"];
 	// menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
-	TITLEMUSICJAMMIN = false;
-	setTimeout(() => { TITLEMUSICJAMMIN = true}, 5400);
 }
 
 function doTitleState(gamestate) {
+	if (!TITLEMUSICJAMMIN && menuMusic.currentTime > 5.4) TITLEMUSICJAMMIN = true;
+
 	//Show Logo
 	menuCtx.clearCanvas(menuCanvas);
 	const titleImage = loader.images["logo2.svg"];
@@ -1065,6 +1065,7 @@ function setupOptionState() {
 
 function doOptionState(gamestate) {
 	loopAudio(menuMusic, 208, 7.25);
+	if (!TITLEMUSICJAMMIN && menuMusic.currentTime > 5.4) TITLEMUSICJAMMIN = true;
 
 	menuCtx.clearCanvas(menuCanvas);
 
