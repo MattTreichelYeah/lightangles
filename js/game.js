@@ -999,7 +999,7 @@ function setupState(state) {
 
 function setupTitleState() {
 	// //Show Logo
-	// const titleImage = loader.images["logo2"];
+	// const titleImage = loader.images["logo2.svg"];
 	// menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2, menuCanvas.height/2 - titleImage.height/2);
 	TITLEMUSICJAMMIN = false;
 	setTimeout(() => { TITLEMUSICJAMMIN = true}, 5400);
@@ -1008,7 +1008,7 @@ function setupTitleState() {
 function doTitleState(gamestate) {
 	//Show Logo
 	menuCtx.clearCanvas(menuCanvas);
-	const titleImage = loader.images["logo2"];
+	const titleImage = loader.images["logo2.svg"];
 	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2 - TITLESCALE / 2 - TITLEPOSITIONX, menuCanvas.height/2 - titleImage.height/2 - TITLESCALE / 2 - TITLEPOSITIONY, titleImage.width + TITLESCALE, titleImage.height + TITLESCALE);
 	incrementImageScale();
 
@@ -1243,7 +1243,7 @@ function imageSources() {
 		sources.push("cycle" + i);
 		sources.push("cycleDie" + i);
 	}
-	sources.push("logo2");
+	sources.push("logo2.svg");
 	sources.push("bgTileBlack");
 	sources.push("bgTileWhite");
 	sources.push("pauseOverlay");
