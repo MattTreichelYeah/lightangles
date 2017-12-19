@@ -716,7 +716,7 @@ function checkWinner() {
 
 function killCycle(cycle) {
 	deathSound.playSoundEffect();
-	gameMusic.playbackRate += 0.5 / MAXPLAYERCOUNT;
+	gameMusic.playbackRate += 0.5 / (OPTIONS.PLAYERCOUNT - 2);
 	cycle.alive = false;
 	eraseCycle(cycle);
 	cycle.turns.push([cycle.x, cycle.y]);  // End Point
