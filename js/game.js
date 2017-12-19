@@ -1084,7 +1084,8 @@ function doOptionState(gamestate) {
 	// Write Option Text
 	// Some of this positioning is weird
 	menuCtx.fillStyle = OPTIONS.THEME.TEXTALT;
-	menuCtx.fillTextCustom("Press Start or [Enter] to Begin", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5);
+	menuCtx.fillTextCustom("Press Start or [Enter] to Begin", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5 - TITLEPOSITIONY);
+	incrementImageScale();
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
 	
 	// Write Option Text with Dynamic Highlight
