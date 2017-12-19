@@ -79,7 +79,7 @@ const DISAPPEAR = {
 // Scratch the above - this is used to avoid suicide on initial drawn trail,
 // and due to an canvas quirk have to be reassigned later to whatever the browser slightly adjusts the raw colour to (see following function)
 const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
-				"rgba(0,0,255,255)", //blue
+				"rgba(0,81,255,255)", //blue
 				"rgba(255,223,0,255)", //yellow
 				"rgba(0,255,0,255)", //limegreen
 				"rgba(255,165,0,255)", //orange
