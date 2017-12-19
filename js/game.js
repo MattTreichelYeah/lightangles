@@ -7,7 +7,7 @@ const SCOREHEIGHT = 50; // Score Display
 const MENUBORDER = 8; // Borders of Menu boxes like Score Display and Messages
 
 // Presentation
-const FONT = "Oswald-Regular";
+const FONT = "Bungee-Regular";
 
 // Keyboard
 const ENTERKEY = 13;
@@ -947,8 +947,8 @@ function drawMessage(message, id) {
 
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.lineWidth = MENUBORDER;
-	menuCtx.fillRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
-	menuCtx.strokeRect(menuCanvas.width/2 - 120, menuCanvas.height/2 - 50, 240, 100);
+	menuCtx.fillRect(menuCanvas.width/2 - 150, menuCanvas.height/2 - 50, 300, 100);
+	menuCtx.strokeRect(menuCanvas.width/2 - 150, menuCanvas.height/2 - 50, 300, 100);
 	menuCtx.font = `30px ${FONT}`;
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
@@ -958,7 +958,7 @@ function drawMessage(message, id) {
 
 function clearMessage() {
 	// Clear old text
-	menuCtx.clearRect(menuCanvas.width/2 - 130, menuCanvas.height/2 - 60, 260, 120);
+	menuCtx.clearRect(menuCanvas.width/2 - 160, menuCanvas.height/2 - 60, 320, 120);
 	// Write Message
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
