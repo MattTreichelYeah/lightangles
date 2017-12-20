@@ -34,9 +34,9 @@ function Theme(name, colour, background, text, textHighlight) {
 	this.TEXTHIGHLIGHT = textHighlight;
 	this.TEXTALT = "#A1A4A4";
 }
-const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack.png')", "#FFFFFF", "#FF0000");
+const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack4.png')", "#FFFFFF", "#FF0000");
 const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite.png')", "#000000", "#FF0000");
-const THEMES = [BLACKTHEME, WHITETHEME];
+const THEMES = [BLACKTHEME];
 
 // External - Directly Changeable
 const OPTIONS = { 
@@ -220,6 +220,9 @@ let TITLEPOSITIONY = 0;
 let TITLESCALE = 0;
 let TITLESCALEUP = true;
 let TITLEPOSITIONUP = true;
+let BACKGROUNDCOUNT = 0;
+let BACKGROUNDSPEED = 60;
+let BACKGROUNDJAMMIN = false;
 let TITLEMUSICJAMMIN = false;
 
 // ----------------------------------------------------------------------------------------------------------------------
@@ -696,13 +699,12 @@ function checkWinner() {
 		SCORES[cycle.id] += 1;
 		if (SCORES[cycle.id] === OPTIONS.WINS) {
 			championSound.playSoundEffect();
-			gameMusic.playbackRate = 1;
 			showInputMessage(MESSAGECHAMPION, cycle.id);
 		} else {
 			winnerSound.playSoundEffect();
-			gameMusic.playbackRate = 1;
 			showTimeoutMessage(MESSAGEWINNER, cycle.id);
 		}
+		gameMusic.playbackRate = 1;
 		RESTART = true;
 		return;
 	} else if (livingCycles.length === 0) {
@@ -1041,16 +1043,32 @@ function incrementImageScale() {
 	// 	if (TITLESCALE < 0) TITLESCALEUP = true;
 	// }
 	if (TITLEMUSICJAMMIN) {
+		document.getElementById("background").style.opacity -= BACKGROUNDSPEED / 5000;	
 		if (TITLEPOSITIONUP) {
 			TITLEPOSITIONY += 1.5;
 			// TITLEPOSITIONX += 0.5;
-			if (TITLEPOSITIONY > 13) TITLEPOSITIONUP = false;
+			if (TITLEPOSITIONY > 13) {
+				TITLEPOSITIONUP = false;
+				document.getElementById("background").style.opacity = 1;
+				doBackground();
+			}
 		} else {
 			TITLEPOSITIONY -= 0.2;
 			// TITLEPOSITIONX -= 0.5;
-			if (TITLEPOSITIONY < 0) TITLEPOSITIONUP = true;
+			if (TITLEPOSITIONY < 0) {
+				TITLEPOSITIONUP = true;
+			}
 		}
 	}
+}
+
+function doBackground() {
+	if (BACKGROUNDJAMMIN) {
+		document.getElementById("background").style.background = "url('img/bgTileBlack4.png')";
+	} else {
+		document.getElementById("background").style.background = "url('img/bgTileBlack5.png')";
+	}
+	BACKGROUNDJAMMIN = !BACKGROUNDJAMMIN;
 }
 
 function setupOptionState() {
@@ -1144,7 +1162,7 @@ function doOptionState(gamestate) {
 				case "object": 
 					if (OPTIONS[optionValue] instanceof Theme) {
 						OPTIONS[optionValue] = THEMES[mod(THEMES.indexOf(OPTIONS.THEME) + 1, THEMES.length)];
-						document.body.style.background = OPTIONS.THEME.BACKGROUND;
+						//document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUND;
 					}
 					break;
 			}
@@ -1170,6 +1188,9 @@ function setupGameState() {
 
 function doGameState(gamestate) {
 	loopAudio(gameMusic, 161, 7.3);
+
+	//incrementImageScale();
+	document.getElementById("background").style.opacity = 1;
 
 	const gamepad = getGamepad(0);
 
@@ -1246,6 +1267,8 @@ function imageSources() {
 	}
 	sources.push("logo2.svg");
 	sources.push("bgTileBlack");
+	sources.push("bgTileBlack4");
+	sources.push("bgTileBlack5");	
 	sources.push("bgTileWhite");
 	sources.push("pauseOverlay");
 	return sources;
