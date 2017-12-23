@@ -635,7 +635,7 @@ function drawTrail(cycle) {
 	}	
 }
 
-function collisionCheck(cycle) {
+function collisionCheck(cycle, checkOwnTrail) {
 	// Check Boundary Collision
 	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength > cycleCanvas.width || cycle.yhb + cycle.yhbLength > cycleCanvas.height) {
 		killCycle(cycle);
@@ -664,7 +664,7 @@ function collisionCheck(cycle) {
 	});
 	
 	// Check Trail Collision
-	checkTrailCollision(cycle, false);
+	checkTrailCollision(cycle, checkOwnTrail);
 };
 
 function checkTrailCollision(cycle, checkSelf) {
@@ -819,7 +819,7 @@ function update() {
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
 			movement(cycle);
-			checkTrailCollision(cycle, true);
+			collisionCheck(cycle, true);
 			if (cycle.alive === true) drawTrail(cycle); // Must be done after self collision check
 		}
 	});
@@ -827,7 +827,7 @@ function update() {
 	// Must do Collision Check after all Movement
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
-			collisionCheck(cycle);
+			collisionCheck(cycle, false);
 		}
 	});
 
