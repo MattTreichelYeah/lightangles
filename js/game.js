@@ -423,6 +423,7 @@ addEventListener("keyup", function (event) {
 }, false);
 
 function Controls() {
+	this.exists = false;
 	this.Up = false,
 	this.Left = false,
 	this.Down = false,
@@ -433,7 +434,7 @@ function Controls() {
 	this.B = false,
 	this.none = function() {
 		for (let control in this) {
-			if (this[control] === true) return false;
+			if (control !== "exists" && this[control] === true) return false;
 		}
 		return true;
 	}
@@ -494,8 +495,10 @@ function getGamepad(id) {
 						controls.B = gamepad.buttons[1].pressed;
 						break;
 				}
+				controls.exists = true;
+
 			} catch (err) {
-				console.log(`Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
+				console.log(`${err}: Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
 			}
 		}
 	}
@@ -1091,11 +1094,11 @@ function doOptionState(gamestate) {
 	for (let i = 0; i < OPTIONS.PLAYERCOUNT; i++) {
 		menuCtx.fillStyle = CYCLECOLOURS[i];
 		const gamepad = getGamepad(i);
-		if (gamepad.A === true) {
+		if (gamepad.exists && gamepad.A === true) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i, menuCanvas.height/2 - 30 * 5 - 5, 20, 20);
 			//Lazy Gamepad Button Testing
 			//navigator.getGamepads()[0].buttons.forEach((button, index) => console.log(index + " " + button.pressed));
-		} else {
+		} else if (gamepad.exists) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
 		}
 	}
