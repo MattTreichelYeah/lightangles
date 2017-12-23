@@ -1046,7 +1046,7 @@ function incrementImageScale() {
 	// 	if (TITLESCALE < 0) TITLESCALEUP = true;
 	// }
 	if (TITLEMUSICJAMMIN) {
-		document.getElementById("background").style.opacity -= BACKGROUNDSPEED / 5000;	
+		document.getElementById("background").style.opacity -= BACKGROUNDSPEED / 10000;	
 		if (TITLEPOSITIONUP) {
 			TITLEPOSITIONY += 1.5;
 			// TITLEPOSITIONX += 0.5;
@@ -1194,6 +1194,7 @@ function doGameState(gamestate) {
 
 	//incrementImageScale();
 	document.getElementById("background").style.opacity = 1;
+	document.getElementById("background").style.background = "url('img/bgTileBlack4.png')";
 
 	const gamepad = getGamepad(0);
 
