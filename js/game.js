@@ -15,7 +15,12 @@ const ESCAPEKEY = 27;
 const OKEY = 79;
 
 // Controller (XInput Assumed Default)
+// Usually different ID strings across both Browser & OS types
+const CONTROLLER360 = "45e-28e-Wireless 360 Controller";
+const CONTROLLER360WIRED = "45e-28e-Xbox 360 Wired Controller";
+const CONTROLLERPS3 = "54c-268-PLAYSTATION(R)3 Controller";
 const CONTROLLERWIIUPRO = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
+const CONTROLLERWIIUPRO2 = "79-1800-Mayflash WiiU Pro Game Controller Adapter";
 const CONTROLLERJOYCONL = "057e-2006-Wireless Gamepad";
 const CONTROLLERJOYCONL2 = "57e-2006-Joy-Con (L)";
 const CONTROLLERJOYCONL3 = "Joy-Con (L) (Vendor: 057e Product: 2006)";
@@ -478,6 +483,7 @@ function getGamepad(id) {
 						controls.B = gamepad.buttons[15].pressed;
 						break;
 					case CONTROLLERWIIUPRO:
+					case CONTROLLERWIIUPRO2:
 						controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
 						controls.Left = gamepad.buttons[14].pressed || gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
 						controls.Down = gamepad.buttons[13].pressed || gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
@@ -487,6 +493,28 @@ function getGamepad(id) {
 						controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
 						controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;
 						break;
+					case CONTROLLER360:
+					case CONTROLLER360WIRED:
+						controls.Up = gamepad.buttons[0].pressed || gamepad.axes[1] < -0.3;
+						controls.Left = gamepad.buttons[2].pressed || gamepad.axes[0] < -0.3;
+						controls.Down = gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
+						controls.Right = gamepad.buttons[3].pressed || gamepad.axes[0] > 0.3;
+						controls.Start = gamepad.buttons[4].pressed;
+						controls.Back = gamepad.buttons[5].pressed;
+						controls.A = gamepad.buttons[11].pressed;
+						controls.B = gamepad.buttons[12].pressed;
+						break;
+					case CONTROLLERPS3:
+						controls.Up = gamepad.buttons[4].pressed || gamepad.axes[1] < -0.3;
+						controls.Left = gamepad.buttons[7].pressed || gamepad.axes[0] < -0.3;
+						controls.Down = gamepad.buttons[6].pressed || gamepad.axes[1] > 0.3;
+						controls.Right = gamepad.buttons[5].pressed || gamepad.axes[0] > 0.3;
+						controls.Start = gamepad.buttons[3].pressed;
+						controls.Back = gamepad.buttons[0].pressed;
+						controls.A = gamepad.buttons[14].pressed;
+						controls.B = gamepad.buttons[13].pressed;
+						break;
+					// Windows XInput
 					default:
 						controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
 						controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
@@ -1100,8 +1128,6 @@ function doOptionState(gamestate) {
 		const gamepad = getGamepad(i);
 		if (gamepad.exists && gamepad.A === true) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i, menuCanvas.height/2 - 30 * 5 - 5, 20, 20);
-			//Lazy Gamepad Button Testing
-			//navigator.getGamepads()[0].buttons.forEach((button, index) => console.log(index + " " + button.pressed));
 		} else if (gamepad.exists) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
 		} else {
@@ -1141,12 +1167,12 @@ function doOptionState(gamestate) {
 			selectSound.playSoundEffect();
 		// Up --> Move Highlight
 		} else if (keyboard[DIR.UP] in keysDown || gamepad.Up === true) {
-			console.log(navigator.getGamepads());
+			logButtons();
 			HIGHLIGHT = mod((HIGHLIGHT - 1), Object.keys(OPTIONS).length);
 			optionSound.playSoundEffect();
 		// Down --> Move Highlight
 		} else if (keyboard[DIR.DOWN] in keysDown || gamepad.Down === true) { 
-			console.log(navigator.getGamepads());
+			logButtons();
 			HIGHLIGHT = mod((HIGHLIGHT + 1), Object.keys(OPTIONS).length);
 			optionSound.playSoundEffect();
 		// Left/Right --> Change Option
@@ -1192,6 +1218,18 @@ function doOptionState(gamestate) {
 	}
 	return(gamestate);
 };
+
+function logButtons() {
+	console.log(navigator.getGamepads());
+	//Lazy Gamepad Button Map Diagnosing
+	try {
+		let buttonString = "Gamepad 0: ";
+		navigator.getGamepads()[0].buttons.forEach((button, index) => {
+			buttonString += `${index} ${button.pressed}, `; 
+		});
+		console.log(buttonString);
+	} catch(err) { }
+}
 
 function setupGameState() {
 	if (menuMusic.volume === 1) fadeAudio(menuMusic);
