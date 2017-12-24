@@ -26,24 +26,27 @@ const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
 // Hard Game Rules
 const MAXPLAYERCOUNT = 16;
 
-function Theme(name, colour, background, text, textHighlight) {
+function Theme(name, colour, background, backgroundAlt, text, textHighlight, image) {
 	this.NAME = name;
 	this.COLOUR = colour;
 	this.BACKGROUND = background;
+	this.BACKGROUNDALT = backgroundAlt;
 	this.TEXT = text;
 	this.TEXTHIGHLIGHT = textHighlight;
 	this.TEXTALT = "#A1A4A4";
+	this.IMAGE = new Image();
+	this.IMAGE.src = image;
 }
-const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack4.png')", "#FFFFFF", "#FF0000");
-const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite.png')", "#000000", "#FF0000");
-const THEMES = [BLACKTHEME];
+const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack2.png')", "url('img/bgTileBlack2alt.png')", "#FFFFFF", "#FF0000", "img/white.png");
+const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite2.png')", "url('img/bgTileWhite2alt.png')", "#000000", "#FF0000", "img/black.png");
+const THEMES = [BLACKTHEME, WHITETHEME];
 
 // External - Directly Changeable
 const OPTIONS = { 
 	PLAYERCOUNT: MAXPLAYERCOUNT/2,
 	WINS: 5,
 	THEME: THEMES[0],
-	BOOST: false,
+	BOOST: true,
 	DISAPPEARINGTRAILS: false
 }
 
@@ -393,7 +396,7 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 
 function drawHitbox(cycle) {
 	// I am an awful person and am using the Hitbox as a boost display for no clear reason
-	cycleCtx.fillStyle = (cycle.boostcharge ? "#FFFFFF" : cycle.colour);
+	cycleCtx.fillStyle = (cycle.boostcharge ? OPTIONS.THEME.TEXT : cycle.colour);
 	cycleCtx.fillRect(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength);
 }
 
@@ -851,7 +854,8 @@ function render() {
 	//Cycle display
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) { 
-			cycleCtx.drawImage(cycle.image, cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
+			let colour = ((cycle.speed * cycle.boost > cycle.speed) ? OPTIONS.THEME.IMAGE : cycle.image);
+			cycleCtx.drawImage(colour, cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
 			if (OPTIONS.BOOST) drawHitbox(cycle);
 		}
 	});
@@ -1067,9 +1071,9 @@ function incrementImageScale() {
 
 function doBackground() {
 	if (BACKGROUNDJAMMIN) {
-		document.getElementById("background").style.background = "url('img/bgTileBlack4.png')";
+		document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUND;
 	} else {
-		document.getElementById("background").style.background = "url('img/bgTileBlack5.png')";
+		document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUNDALT;
 	}
 	BACKGROUNDJAMMIN = !BACKGROUNDJAMMIN;
 }
@@ -1165,7 +1169,8 @@ function doOptionState(gamestate) {
 				case "object": 
 					if (OPTIONS[optionValue] instanceof Theme) {
 						OPTIONS[optionValue] = THEMES[mod(THEMES.indexOf(OPTIONS.THEME) + 1, THEMES.length)];
-						//document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUND;
+						document.body.style.background = OPTIONS.THEME.COLOUR;
+						if (TITLEMUSICJAMMIN) document.getElementById("background").style.background = (BACKGROUNDJAMMIN) ? OPTIONS.THEME.BACKGROUND : OPTIONS.THEME.BACKGROUNDALT;
 					}
 					break;
 			}
@@ -1194,7 +1199,7 @@ function doGameState(gamestate) {
 
 	//incrementImageScale();
 	document.getElementById("background").style.opacity = 1;
-	document.getElementById("background").style.background = "url('img/bgTileBlack4.png')";
+	document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUND;
 
 	const gamepad = getGamepad(0);
 
@@ -1270,10 +1275,12 @@ function imageSources() {
 		sources.push("cycleDie" + i);
 	}
 	sources.push("logo2.svg");
-	sources.push("bgTileBlack");
-	sources.push("bgTileBlack4");
-	sources.push("bgTileBlack5");	
-	sources.push("bgTileWhite");
+	sources.push("black")
+	sources.push("white")
+	sources.push("bgTileBlack2");
+	sources.push("bgTileBlack2alt");
+	sources.push("bgTileWhite2");	
+	sources.push("bgTileWhite2alt");
 	sources.push("pauseOverlay");
 	return sources;
 }
