@@ -1104,6 +1104,9 @@ function doOptionState(gamestate) {
 			//navigator.getGamepads()[0].buttons.forEach((button, index) => console.log(index + " " + button.pressed));
 		} else if (gamepad.exists) {
 			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 5, menuCanvas.height/2 - 30 * 5, 10, 10);
+		} else {
+			menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+			menuCtx.fillRect(menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 20 / 2) + 20 * i + 10, menuCanvas.height/2 - 30 * 5 + 3, 4, 4);			
 		}
 	}
 
