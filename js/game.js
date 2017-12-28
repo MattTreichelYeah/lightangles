@@ -139,7 +139,7 @@ function setCycleStarts() {
 	const hoffset = Math.round(cycleCanvas.width/(OPTIONS.PLAYERCOUNT + 1));
 	const cyclestarts = [];
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
-		let y = ((i % 2 === 0) ? voffset : cycleCanvas.height - voffset - PROPERTIES.CYCLELENGTH/2);
+		let y = ((i % 2 === 0) ? voffset : cycleCanvas.height - voffset);
 		let x = hoffset * (i + 1) - PROPERTIES.CYCLEWIDTH/2;
 		cyclestarts.push([x, y]);
 	}
