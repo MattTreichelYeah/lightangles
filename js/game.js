@@ -669,26 +669,26 @@ function drawTrail(cycle) {
 	}	
 }
 
-function collisionCheck(cycle, checkOwnTrail) {
+function collisionCheck(cycle) {
 	// Check Boundary Collision
-	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength > cycleCanvas.width || cycle.yhb + cycle.yhbLength > cycleCanvas.height) {
+	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength >= cycleCanvas.width || cycle.yhb + cycle.yhbLength >= cycleCanvas.height) {
 		killCycle(cycle);
 		return;
 	}
 
 	// Check Cycle Collision First
 	cycles.forEach(function(othercycle) {
-		if (othercycle.id !== cycle.id) {
-			if (othercycle.alive === true) {
+		if (othercycle.alive === true) {
+			if (othercycle.id !== cycle.id) {
 				const cyclexhbEdge = cycle.xhb + cycle.xhbLength;
 				const cycleyhbEdge = cycle.yhb + cycle.yhbLength;
 				const otherxhbEdge = othercycle.xhb + othercycle.xhbLength;
 				const otheryhbEdge = othercycle.yhb + othercycle.yhbLength;
 
-				if (cycle.xhb <= otherxhbEdge
-				&& othercycle.xhb <= cyclexhbEdge
-				&& cycle.yhb <= otheryhbEdge
-				&& othercycle.yhb <= cycleyhbEdge) {
+				if (cycle.xhb < otherxhbEdge
+				&& othercycle.xhb < cyclexhbEdge
+				&& cycle.yhb < otheryhbEdge
+				&& othercycle.yhb < cycleyhbEdge) {
 					killCycle(cycle);
 					killCycle(othercycle);
 					return;
@@ -698,27 +698,59 @@ function collisionCheck(cycle, checkOwnTrail) {
 	});
 	
 	// Check Trail Collision
-	checkTrailCollision(cycle, checkOwnTrail);
+	checkTrailCollision(cycle);
 };
 
-function checkTrailCollision(cycle, checkSelf) {
-	// Image Data is RGBαRGBαRGBα... of each pixel in selection
-	// Note that getImageData() & files written to cycleCanvas create a security issue, so game must be run on a server or annoying options set to allow images
-	const hitbox = trailCtx.getImageData(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength).data;
-	for (let i = 0; i < hitbox.length; i += 4) {
-		pixelcolour = "rgba(" + hitbox[i] + "," + hitbox[i+1] + "," + hitbox[i+2] + "," + hitbox[i+3] + ")";
-		if (checkSelf) {
-			if (pixelcolour !== "rgba(0,0,0,0)") {
-				killCycle(cycle);
-				return;
-			}			
-		} else {
-			if (pixelcolour !== "rgba(0,0,0,0)" && pixelcolour !== cycle.colour) { // rgba(0,0,0,0) is transparent black, ie. default background
-				killCycle(cycle);
-				return;
-			}
+function checkTrailCollision(cycle) {
+
+	cycles.forEach(function(othercycle) {
+		if (othercycle.alive === true) {
+			othercycle.turns.forEach((turn, index) => {
+				let nextTurn;
+				if (othercycle.turns[index + 1] !== undefined) {
+					nextTurn = othercycle.turns[index + 1]; 
+				} else {
+					if (othercycle.id === cycle.id) { // don't collide with own last drawn part of trail
+						switch (cycle.direction) {
+							case DIR.RIGHT:	nextTurn = [cycle.xhb - 1, cycle.y]; break;
+							case DIR.LEFT: nextTurn = [cycle.x + cycle.xhbLength - PROPERTIES.CYCLELENGTH / 4 + 1, cycle.y]; break;
+							case DIR.UP: nextTurn = [cycle.x, cycle.y + cycle.yhbLength - PROPERTIES.CYCLELENGTH / 4 + 1]; break;
+							case DIR.DOWN: nextTurn = [cycle.x, cycle.yhb - 1]; break;
+						}
+					} else {
+						nextTurn = [othercycle.x, othercycle.y];
+					}
+				}
+
+				const cyclexhbEdge = cycle.xhb + cycle.xhbLength;
+				const cycleyhbEdge = cycle.yhb + cycle.yhbLength;
+				let trailxStart;
+				let trailyStart;
+				let trailxEdge;
+				let trailyEdge;
+
+				if (nextTurn[0] === turn[0]) { // y movement
+					trailxStart = turn[0] - PROPERTIES.TRAILWIDTH / 2;
+					trailxEdge = turn[0] + PROPERTIES.TRAILWIDTH / 2;
+					trailyStart = Math.min(turn[1], nextTurn[1]);
+					trailyEdge = Math.max(turn[1], nextTurn[1]);
+				} else { // x movement
+					trailxStart = Math.min(turn[0], nextTurn[0])
+					trailxEdge = Math.max(turn[0], nextTurn[0])
+					trailyStart = turn[1] - PROPERTIES.TRAILWIDTH / 2;
+					trailyEdge = turn[1] + PROPERTIES.TRAILWIDTH / 2;
+				}
+
+				if (cycle.xhb < trailxEdge
+				&& trailxStart < cyclexhbEdge
+				&& cycle.yhb < trailyEdge
+				&& trailyStart < cycleyhbEdge) {
+					killCycle(cycle);
+					return;
+				}
+			});
 		}
-	}
+	});
 }
 
 function checkWinner() {
@@ -853,15 +885,14 @@ function update() {
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
 			movement(cycle);
-			collisionCheck(cycle, true);
-			if (cycle.alive === true) drawTrail(cycle); // Must be done after self collision check
+			drawTrail(cycle);
 		}
 	});
 	
 	// Must do Collision Check after all Movement
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) {
-			collisionCheck(cycle, false);
+			collisionCheck(cycle);
 		}
 	});
 
