@@ -964,7 +964,7 @@ function drawScore() {
 	menuCtx.textAlign = "center";
 	cycles.forEach(function(cycle) {
 		menuCtx.fillStyle = cycle.colour;
-		menuCtx.fillTextCustom(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 30 / 2) + 30 * cycle.id, 5);
+		menuCtx.fillTextCustom(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 15) + 30 * cycle.id + 15, 5);
 	});
 }
 
