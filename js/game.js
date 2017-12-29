@@ -685,6 +685,30 @@ function collisionCheck(cycle) {
 				const otherxhbEdge = othercycle.xhb + othercycle.xhbLength;
 				const otheryhbEdge = othercycle.yhb + othercycle.yhbLength;
 
+				// Massively redundant and inaccurate check for if hitboxes pass exactly past each other in a frame
+				// This might overreach collision in very rare alternate cases?
+				if (cycle.orientation === othercycle.orientation) {
+					if (cycle.orientation === ORI.VERTICAL) {
+						if (cycle.xhb < otherxhbEdge
+						&& othercycle.xhb < cyclexhbEdge
+						&& cycle.yhb <= otheryhbEdge
+						&& othercycle.yhb <= cycleyhbEdge) {
+							killCycle(cycle);
+							killCycle(othercycle);
+							return;
+						}
+					} else {
+						if (cycle.xhb <= otherxhbEdge
+						&& othercycle.xhb <= cyclexhbEdge
+						&& cycle.yhb < otheryhbEdge
+						&& othercycle.yhb < cycleyhbEdge) {
+							killCycle(cycle);
+							killCycle(othercycle);
+							return;
+						}
+					}
+				}
+
 				if (cycle.xhb < otherxhbEdge
 				&& othercycle.xhb < cyclexhbEdge
 				&& cycle.yhb < otheryhbEdge
