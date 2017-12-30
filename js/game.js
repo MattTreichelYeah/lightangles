@@ -17,6 +17,8 @@ const OKEY = 79;
 // Controller (XInput Assumed Default)
 // Usually different ID strings across both Browser & OS types
 const CONTROLLER360 = "45e-28e-Wireless 360 Controller";
+const CONTROLLER3602 = "045e-028e-Controller (XBOX 360 For Windows)";
+const CONTROLLER3603= "045e-02a1-Controller (Xbox 360 Wireless Receiver for Windows)";
 const CONTROLLER360WIRED = "45e-28e-Xbox 360 Wired Controller";
 const CONTROLLERPS3 = "54c-268-PLAYSTATION(R)3 Controller";
 const CONTROLLERWIIUPRO = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
@@ -27,6 +29,7 @@ const CONTROLLERJOYCONL3 = "Joy-Con (L) (Vendor: 057e Product: 2006)";
 const CONTROLLERJOYCONR = "057e-2007-Wireless Gamepad";
 const CONTROLLERJOYCONR2 = "57e-2007-Joy-Con (R)";
 const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
+const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
 
 // Hard Game Rules
 const MAXPLAYERCOUNT = 16;
@@ -495,14 +498,25 @@ function getGamepad(id) {
 						break;
 					case CONTROLLER360:
 					case CONTROLLER360WIRED:
-						controls.Up = gamepad.buttons[0].pressed || gamepad.axes[1] < -0.3;
-						controls.Left = gamepad.buttons[2].pressed || gamepad.axes[0] < -0.3;
-						controls.Down = gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
-						controls.Right = gamepad.buttons[3].pressed || gamepad.axes[0] > 0.3;
+						controls.Up = gamepad.buttons[1].pressed;
+						controls.Left = gamepad.buttons[3].pressed;
+						controls.Down = gamepad.buttons[0].pressed;
+						controls.Right = gamepad.buttons[2].pressed;
 						controls.Start = gamepad.buttons[4].pressed;
 						controls.Back = gamepad.buttons[5].pressed;
 						controls.A = gamepad.buttons[11].pressed;
 						controls.B = gamepad.buttons[12].pressed;
+						break;
+					case CONTROLLER3602:
+					case CONTROLLER3603:
+						controls.Up = gamepad.buttons[3].pressed;
+						controls.Left = gamepad.buttons[2].pressed;
+						controls.Down = gamepad.buttons[0].pressed;
+						controls.Right = gamepad.buttons[1].pressed;
+						controls.Start = gamepad.buttons[7].pressed;
+						controls.Back = gamepad.buttons[6].pressed;
+						controls.A = gamepad.buttons[5].pressed;
+						controls.B = gamepad.buttons[4].pressed;
 						break;
 					case CONTROLLERPS3:
 						controls.Up = gamepad.buttons[4].pressed || gamepad.axes[1] < -0.3;
@@ -515,6 +529,16 @@ function getGamepad(id) {
 						controls.B = gamepad.buttons[13].pressed;
 						break;
 					// Windows XInput
+					case CONTROLLERGAMECUBE:
+						controls.Up = gamepad.buttons[3].pressed;
+						controls.Left = gamepad.buttons[1].pressed;
+						controls.Down = gamepad.buttons[0].pressed;
+						controls.Right = gamepad.buttons[2].pressed;
+						controls.Start = gamepad.buttons[7].pressed;
+						controls.Back = gamepad.buttons[6].pressed;
+						controls.A = gamepad.buttons[5].pressed;
+						controls.B = gamepad.buttons[4].pressed;
+						break;					
 					default:
 						controls.Up = gamepad.buttons[12].pressed || gamepad.axes[1] < -0.3;
 						controls.Left = gamepad.buttons[14].pressed || gamepad.axes[0] < -0.3;
