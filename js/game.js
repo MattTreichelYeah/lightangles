@@ -1278,7 +1278,8 @@ function doTitleState(gamestate) {
 
 	//Show Logo
 	menuCtx.clearCanvas(menuCanvas);
-	const titleImage = loader.images["logo2.svg"];
+	let adjust = (TITLEPOSITIONY === 0) ? "-0" : `-${COLOURJAM}`;
+	const titleImage = loader.images[`logo2.svg${adjust}`];
 	menuCtx.drawImage(titleImage, menuCanvas.width/2 - titleImage.width/2 - TITLESCALE / 2 - TITLEPOSITIONX, menuCanvas.height/2 - titleImage.height/2 - TITLESCALE / 2 - TITLEPOSITIONY, titleImage.width + TITLESCALE, titleImage.height + TITLESCALE);
 	incrementImageScale();
 
@@ -1373,7 +1374,7 @@ function doOptionState(gamestate) {
 
 	// Write Option Text
 	// Some of this positioning is weird
-	menuCtx.fillStyle = OPTIONS.THEME.TEXTALT;
+	menuCtx.fillStyle = (TITLEPOSITIONY === 0) ? OPTIONS.THEME.TEXTALT : CYCLECOLOURS[COLOURJAM];
 	menuCtx.fillTextCustom("Press Start or [Enter] to Begin", menuCanvas.width/2, menuCanvas.height/2 - 30 * 3.5 - TITLEPOSITIONY);
 	incrementImageScale();
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
@@ -1560,7 +1561,14 @@ function imageSources() {
 	}
 	sources.push("cycle" + (MAXPLAYERCOUNT - 1) + "alt");
 	sources.push("cycleDie" + (MAXPLAYERCOUNT - 1) + "alt");
-	sources.push("logo2.svg");
+	sources.push("logo2.svg-0");
+	sources.push("logo2.svg-1");
+	sources.push("logo2.svg-2");
+	sources.push("logo2.svg-3");
+	sources.push("logo2.svg-4");
+	sources.push("logo2.svg-5");
+	sources.push("logo2.svg-6");
+	sources.push("logo2.svg-7");
 	sources.push("black");
 	sources.push("white");
 	sources.push("alt");
