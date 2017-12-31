@@ -308,7 +308,7 @@ const boostSound = new Audio("snd/boost.wav");
 const winnerSound = new Audio("snd/winner.wav");
 const drawSound = new Audio("snd/draw.wav");
 const championSound = new Audio("snd/champion.wav");
-deathSound.volume = 0.2;
+deathSound.volume = 0.1;
 optionSound.volume = 0.6;
 option2Sound.volume = 0.6;
 
