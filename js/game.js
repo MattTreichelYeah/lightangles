@@ -265,6 +265,7 @@ let BACKGROUNDCOUNT = 0;
 let BACKGROUNDSPEED = 60;
 let BACKGROUNDJAMMIN = false;
 let TITLEMUSICJAMMIN = false;
+let COLOURJAM = 0;
 
 // ----------------------------------------------------------------------------------------------------------------------
 // Enumerations
@@ -1023,7 +1024,7 @@ function drawScore() {
 	menuCtx.textBaseline = "middle";
 	// Logo
 	// There's an annoying bug here if you quit from menu when down to 2 cycles, this briefly displays fancy and isn't fixed until round starts
-	menuCtx.fillStyle = (TITLEPOSITIONY === 0) ? OPTIONS.THEME.TEXT : CYCLECOLOURS[Math.round(TITLEPOSITIONY)];
+	menuCtx.fillStyle = (TITLEPOSITIONY === 0) ? OPTIONS.THEME.TEXT : CYCLECOLOURS[COLOURJAM];
 	menuCtx.textAlign = "left";
 	menuCtx.fillTextCustom("LIGHT ANGLES", 10, 25 - TITLEPOSITIONY)
 	menuCtx.textAlign = "right";
@@ -1209,6 +1210,7 @@ function incrementImageScale(noBackgroundAnim = false) {
 			// TITLEPOSITIONX += 0.5;
 			if (TITLEPOSITIONY > 13) {
 				TITLEPOSITIONUP = false;
+				COLOURJAM = mod(COLOURJAM + 1, OPTIONS.PLAYERCOUNT);
 				if (!noBackgroundAnim) document.getElementById("background").style.opacity = 1;
 				doBackground();
 			}
