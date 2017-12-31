@@ -631,7 +631,6 @@ function movement(cycle) {
 		let moveChance = 0.01;
 		while (collision) {
 			randomMove = Math.random();
-			if (moveChance !== 0.01) console.log(cycle.id)
 			if (moveChance * 0 < randomMove && randomMove < moveChance * 0 + moveChance) {
 				gamepad.Up = true;
 			} else if (moveChance * 1 < randomMove && randomMove < moveChance * 1 + moveChance) {
@@ -642,9 +641,6 @@ function movement(cycle) {
 				gamepad.Right = true;
 			}
 			collision = fakeMovement(cycle, gamepad);
-			if (cycle.id === 1 && moveChance === 0.25) {
-				// console.log(collision, cycle.id, moveChance, gamepad.Up, gamepad.Down, gamepad.Left, gamepad.Right); debugger;
-			}
 			if (collision) {
 				if (Math.random() > 0.98) {
 					collision = false; //overturn collision avoidance
