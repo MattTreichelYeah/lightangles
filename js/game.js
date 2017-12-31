@@ -846,18 +846,20 @@ function checkWinner() {
 		SCORES[cycle.id] += 1;
 		if (SCORES[cycle.id] === OPTIONS.WINS) {
 			championSound.playSoundEffect();
-			showInputMessage(MESSAGECHAMPION, cycle.id);
+			showInputMessage(`Player ${cycle.id + 1} WINS!!`, "A to Rematch, B to Menu", cycle.id);
 		} else {
 			winnerSound.playSoundEffect();
-			showTimeoutMessage(MESSAGEWINNER, cycle.id);
+			showTimeoutMessage(`Player ${cycle.id + 1}!`, `${SCORES[cycle.id]} of ${OPTIONS.WINS}!`, cycle.id);
 		}
+		TITLEPOSITIONY = 0;
 		gameMusic.playbackRate = 1;
 		RESTART = true;
 		return;
 	} else if (livingCycles.length === 0) {
 		drawSound.playSoundEffect();
+		TITLEPOSITIONY = 0;
 		gameMusic.playbackRate = 1;
-		showTimeoutMessage(MESSAGEDRAW, -1);
+		showTimeoutMessage(MESSAGEDRAW, "", -1);
 		RESTART = true;
 		return;
 	}
@@ -1018,18 +1020,19 @@ function drawScore() {
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.fillRect(0, 0, menuCanvas.width, SCOREHEIGHT - MENUBORDER);
 	menuCtx.font = `24px ${FONT}`;
-	menuCtx.textBaseline = "top";
+	menuCtx.textBaseline = "middle";
 	// Logo
-	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+	// There's an annoying bug here if you quit from menu when down to 2 cycles, this briefly displays fancy and isn't fixed until round starts
+	menuCtx.fillStyle = (TITLEPOSITIONY === 0) ? OPTIONS.THEME.TEXT : CYCLECOLOURS[Math.round(TITLEPOSITIONY)];
 	menuCtx.textAlign = "left";
-	menuCtx.fillTextCustom("LIGHT ANGLES", 10, 5)
+	menuCtx.fillTextCustom("LIGHT ANGLES", 10, 25 - TITLEPOSITIONY)
 	menuCtx.textAlign = "right";
-	menuCtx.fillTextCustom("LIGHT ANGLES", menuCanvas.width - 10, 5)
+	menuCtx.fillTextCustom("LIGHT ANGLES", menuCanvas.width - 10, 25 - TITLEPOSITIONY)
 	// Score
 	menuCtx.textAlign = "center";
 	cycles.forEach(function(cycle) {
 		menuCtx.fillStyle = cycle.colour;
-		menuCtx.fillTextCustom(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 15) + 30 * cycle.id + 15, 5);
+		menuCtx.fillTextCustom(SCORES[cycle.id], menuCanvas.width / 2 - (OPTIONS.PLAYERCOUNT * 13) + 26 * cycle.id + 15, 25);
 	});
 }
 
@@ -1043,24 +1046,20 @@ const MESSAGEWINNER = "Round Winner!";
 const MESSAGEDRAW = "Draw!";
 const MESSAGECHAMPION = "Champ!"
 
-function showInputMessage(message, id) {
+function showInputMessage(message, message2, id) {
 	INPUTMESSAGE = true;
 
-	drawMessage(message, id);
-
-	// Cheating, since this only used for Champion message right now
-	menuCtx.font = `15px ${FONT}`;
-	menuCtx.fillTextCustom("A to Rematch, B to Return", menuCanvas.width/2, menuCanvas.height/2 + 30);
+	drawMessage(message, message2, id);
 }
 
-function showTimeoutMessage(message, id) {
+function showTimeoutMessage(message, message2, id) {
 	MESSAGE = true;
 
 	timeoutFunction = function() {
 		MESSAGE = false;
 	}
 
-	drawMessage(message, id);
+	drawMessage(message, message2, id);
 
 	const timeout = setTimeout(timeoutFunction, 3000);
 };
@@ -1088,12 +1087,12 @@ function showCountdown(countdown) {
 	}
 
 	// Write Initial Message
-	drawMessage(MESSAGEREADY, -1)
+	drawMessage(MESSAGEREADY, "", -1)
 
 	const timeout = setInterval(timeoutFunction, 1000);
 };
 
-function drawMessage(message, id) {
+function drawMessage(message, message2, id) {
 	if (id !== -1) {
 		menuCtx.strokeStyle = cycles[id].colour;
 		INPUTTER = id;
@@ -1101,6 +1100,8 @@ function drawMessage(message, id) {
 		menuCtx.strokeStyle = OPTIONS.THEME.TEXT; 
 		INPUTTER = 0;
 	} 
+
+	let adjust = (message2 ? 8 : 0)
 
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.lineWidth = MENUBORDER;
@@ -1110,7 +1111,10 @@ function drawMessage(message, id) {
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
 	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillTextCustom(message, menuCanvas.width/2, menuCanvas.height/2);
+	menuCtx.fillTextCustom(message, menuCanvas.width/2, menuCanvas.height/2 - adjust);
+
+	menuCtx.font = `15px ${FONT}`;
+	menuCtx.fillTextCustom(message2, menuCanvas.width/2, menuCanvas.height/2 + 30 - adjust);
 }
 
 function clearMessage() {
@@ -1189,7 +1193,8 @@ function doTitleState(gamestate) {
 	return(gamestate);
 };
 
-function incrementImageScale() {
+function incrementImageScale(noBackgroundAnim = false) {
+	// noBackgroundAnim = false;
 	// if (TITLESCALEUP) {
 	// 	TITLESCALE += 2;
 	// 	if (TITLESCALE > 30) TITLESCALEUP = false;
@@ -1198,17 +1203,17 @@ function incrementImageScale() {
 	// 	if (TITLESCALE < 0) TITLESCALEUP = true;
 	// }
 	if (TITLEMUSICJAMMIN) {
-		document.getElementById("background").style.opacity -= BACKGROUNDSPEED / 10000;	
+		if (!noBackgroundAnim) document.getElementById("background").style.opacity -= BACKGROUNDSPEED / 10000;	
 		if (TITLEPOSITIONUP) {
-			TITLEPOSITIONY += 1.5;
+			TITLEPOSITIONY += 1.5 * gameMusic.playbackRate;
 			// TITLEPOSITIONX += 0.5;
 			if (TITLEPOSITIONY > 13) {
 				TITLEPOSITIONUP = false;
-				document.getElementById("background").style.opacity = 1;
+				if (!noBackgroundAnim) document.getElementById("background").style.opacity = 1;
 				doBackground();
 			}
 		} else {
-			TITLEPOSITIONY -= 0.2;
+			TITLEPOSITIONY -= 0.2 * gameMusic.playbackRate;
 			// TITLEPOSITIONX -= 0.5;
 			if (TITLEPOSITIONY < 0) {
 				TITLEPOSITIONUP = true;
@@ -1359,9 +1364,14 @@ function setupGameState() {
 function doGameState(gamestate) {
 	loopAudio(gameMusic, 161, 7.3);
 
-	//incrementImageScale();
-	document.getElementById("background").style.opacity = 1;
-	document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUND;
+	if (OPTIONS.PLAYERCOUNT !== 2 && cycles.filter((cycle) => { return cycle.alive }).length === 2) {
+		TITLEMUSICJAMMIN = true;
+		incrementImageScale(true);
+	} else {
+		document.getElementById("background").style.opacity = 1;
+		document.getElementById("background").style.background = OPTIONS.THEME.BACKGROUND;
+		TITLEPOSITIONY = 0;
+	}
 
 	const gamepad = getGamepad(0);
 
@@ -1424,6 +1434,8 @@ function restartGameState() {
 	PAUSE = false;
 	RESTART = true;
 	SCORES = SCORES.map(function(value) { return value = 0; });
+	TITLEPOSITIONY = 0;
+	gameMusic.playbackRate = 1;
 }
 
 // ----------------------------------------------------------------------------------------------------------------------
