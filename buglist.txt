@@ -11,3 +11,5 @@ Playtest 1:
 - Oh yeah, massive refactoring is necessary
 
 - Should have mechanic for knocked out players in large playercount games
+
+- Sound effects get cut off in Firefox, should probably initialize new ones each use?
