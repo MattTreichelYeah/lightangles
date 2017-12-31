@@ -566,10 +566,10 @@ function getGamepad(id) {
 						break;
 					// Windows XInput
 					case CONTROLLERGAMECUBE:
-						controls.Up = gamepad.buttons[3].pressed;
-						controls.Left = gamepad.buttons[1].pressed;
-						controls.Down = gamepad.buttons[0].pressed;
-						controls.Right = gamepad.buttons[2].pressed;
+						controls.Up = gamepad.buttons[3].pressed || gamepad.buttons[8].pressed;
+						controls.Left = gamepad.buttons[1].pressed || gamepad.buttons[10].pressed;
+						controls.Down = gamepad.buttons[0].pressed || gamepad.buttons[9].pressed;
+						controls.Right = gamepad.buttons[2].pressed || gamepad.buttons[11].pressed;
 						controls.Start = gamepad.buttons[7].pressed;
 						controls.Back = gamepad.buttons[6].pressed;
 						controls.A = gamepad.buttons[5].pressed;
