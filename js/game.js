@@ -622,6 +622,38 @@ function movement(cycle) {
 	// Get relevant controls
 	const keyboard = cycle.controls;
 	const gamepad = getGamepad(cycle.id);
+
+	// Assume CPU
+	if (cycle.id !== 0 && !gamepad.exists) {
+		let collision = true;
+		let moveChance = 0.01;
+		while (collision) {
+			randomMove = Math.random();
+			if (moveChance !== 0.01) console.log(cycle.id)
+			if (moveChance * 0 < randomMove && randomMove < moveChance * 0 + moveChance) {
+				gamepad.Up = true;
+			} else if (moveChance * 1 < randomMove && randomMove < moveChance * 1 + moveChance) {
+				gamepad.Down = true;
+			} else if (moveChance * 2  < randomMove && randomMove < moveChance * 2 + moveChance) {
+				gamepad.Left = true;
+			} else if (moveChance * 3  < randomMove && randomMove < moveChance * 3 + moveChance) {
+				gamepad.Right = true;
+			}
+			collision = fakeMovement(cycle, gamepad);
+			if (cycle.id === 1 && moveChance === 0.25) {
+				// console.log(collision, cycle.id, moveChance, gamepad.Up, gamepad.Down, gamepad.Left, gamepad.Right); debugger;
+			}
+			if (collision) {
+				if (Math.random() > 0.98) {
+					collision = false; //overturn collision avoidance
+				} else {
+					moveChance = 0.25;
+					gamepad.Up = false; gamepad.Down = false; gamepad.Left = false; gamepad.Right = false;
+					// Redo
+				}
+			}
+		}
+	}
 	
 	// Set cycle orientation and direction
 	// Cycles can't turn backwards
@@ -690,6 +722,70 @@ function movement(cycle) {
 	cycle.setHitbox(cycle.direction, cycle.orientation);
 };
 
+function fakeMovement(cycle, gamepad) {
+	let initialDirection = cycle.direction;
+	let initialOrientation = cycle.orientation;
+	let initialx = cycle.x;
+	let initialy = cycle.y;
+
+	if (gamepad.Up === true) {
+		if (cycle.direction !== DIR.DOWN) { 
+			cycle.direction = DIR.UP;
+			cycle.orientation = ORI.VERTICAL;
+		}
+	} else if (gamepad.Left === true) {
+		if (cycle.direction !== DIR.RIGHT) {
+			cycle.direction = DIR.LEFT;
+			cycle.orientation = ORI.HORIZONTAL;
+		}
+	} else if (gamepad.Down === true) {
+		if (cycle.direction !== DIR.UP) { 
+			cycle.direction = DIR.DOWN;
+			cycle.orientation = ORI.VERTICAL;
+		}
+	} else if (gamepad.Right === true) {
+		if (cycle.direction !== DIR.LEFT) {	
+			cycle.direction = DIR.RIGHT;
+			cycle.orientation = ORI.HORIZONTAL;
+		}
+	}
+
+	// Update location
+	switch (cycle.direction) {
+		case DIR.UP:
+			cycle.x = cycle.x;
+			cycle.y = cycle.y - cycle.speed * cycle.boost;
+			break;
+		case DIR.LEFT:
+			cycle.x = cycle.x - cycle.speed * cycle.boost;
+			cycle.y = cycle.y;
+			break;
+		case DIR.DOWN:
+			cycle.x = cycle.x;
+			cycle.y = cycle.y + cycle.speed * cycle.boost;
+			break;
+		case DIR.RIGHT:
+			cycle.x = cycle.x + cycle.speed * cycle.boost;
+			cycle.y = cycle.y;
+			break;
+		default:
+			cycle.x = cycle.x;
+			cycle.y = cycle.y;
+	}
+
+	// Need to update hitbox coordinates with movement
+	cycle.setHitbox(cycle.direction, cycle.orientation);
+
+	let collision = collisionCheck(cycle, true)
+
+	cycle.direction = initialDirection;
+	cycle.orientation = initialOrientation;
+	cycle.x = initialx;
+	cycle.y = initialy;
+
+	return collision;
+}
+
 function drawTrail(cycle) {
 	switch (cycle.direction) {
 		case DIR.UP:
@@ -727,11 +823,13 @@ function drawTrail(cycle) {
 	}	
 }
 
-function collisionCheck(cycle) {
+function collisionCheck(cycle, fake = false) {
+	let collision = false;
+
 	// Check Boundary Collision
 	if (cycle.xhb < 0 || cycle.yhb < 0 || cycle.xhb + cycle.xhbLength >= cycleCanvas.width || cycle.yhb + cycle.yhbLength >= cycleCanvas.height) {
-		killCycle(cycle);
-		return;
+		if (!fake) killCycle(cycle);
+		return true;
 	}
 
 	// Check Cycle Collision First
@@ -751,18 +849,24 @@ function collisionCheck(cycle) {
 						&& othercycle.xhb < cyclexhbEdge
 						&& cycle.yhb <= otheryhbEdge
 						&& othercycle.yhb <= cycleyhbEdge) {
-							killCycle(cycle);
-							killCycle(othercycle);
-							return;
+							if (!fake) {
+								killCycle(cycle);
+								killCycle(othercycle);
+							}
+							collision = true;
+							return true;
 						}
 					} else {
 						if (cycle.xhb <= otherxhbEdge
 						&& othercycle.xhb <= cyclexhbEdge
 						&& cycle.yhb < otheryhbEdge
 						&& othercycle.yhb < cycleyhbEdge) {
-							killCycle(cycle);
-							killCycle(othercycle);
-							return;
+							if (!fake) {
+								killCycle(cycle);
+								killCycle(othercycle);
+							}
+							collision = true;
+							return true;
 						}
 					}
 				}
@@ -771,19 +875,23 @@ function collisionCheck(cycle) {
 				&& othercycle.xhb < cyclexhbEdge
 				&& cycle.yhb < otheryhbEdge
 				&& othercycle.yhb < cycleyhbEdge) {
-					killCycle(cycle);
-					killCycle(othercycle);
-					return;
+					if (!fake) {
+						killCycle(cycle);
+						killCycle(othercycle);
+					}
+					collision = true;
+					return true;
 				}
 			} 
 		}
 	});
 	
-	// Check Trail Collision
-	checkTrailCollision(cycle);
+	if (checkTrailCollision(cycle, fake)) collision = true;
+	return collision;
 };
 
-function checkTrailCollision(cycle) {
+function checkTrailCollision(cycle, fake = false) {
+	let collision = false;
 
 	cycles.forEach(function(othercycle) {
 		if (othercycle.alive === true) {
@@ -827,12 +935,14 @@ function checkTrailCollision(cycle) {
 				&& trailxStart < cyclexhbEdge
 				&& cycle.yhb < trailyEdge
 				&& trailyStart < cycleyhbEdge) {
-					killCycle(cycle);
-					return;
+					if (!fake) killCycle(cycle);
+					collision = true;
+					return true;
 				}
 			});
 		}
 	});
+	return collision;
 }
 
 function checkWinner() {
