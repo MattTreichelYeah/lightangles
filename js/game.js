@@ -1106,8 +1106,8 @@ function drawMessage(message, message2, id) {
 
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.lineWidth = MENUBORDER;
-	menuCtx.fillRect(menuCanvas.width/2 - 150, menuCanvas.height/2 - 50, 300, 100);
-	menuCtx.strokeRect(menuCanvas.width/2 - 150, menuCanvas.height/2 - 50, 300, 100);
+	menuCtx.fillRect(menuCanvas.width/2 - 160, menuCanvas.height/2 - 50, 320, 100);
+	menuCtx.strokeRect(menuCanvas.width/2 - 160, menuCanvas.height/2 - 50, 320, 100);
 	menuCtx.font = `30px ${FONT}`;
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
@@ -1120,7 +1120,7 @@ function drawMessage(message, message2, id) {
 
 function clearMessage() {
 	// Clear old text
-	menuCtx.clearRect(menuCanvas.width/2 - 160, menuCanvas.height/2 - 60, 320, 120);
+	menuCtx.clearRect(menuCanvas.width/2 - 170, menuCanvas.height/2 - 60, 340, 120);
 	// Write Message
 	menuCtx.textAlign = "center";
 	menuCtx.textBaseline = "middle";
