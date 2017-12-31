@@ -391,8 +391,9 @@ body.appendChild(menuCanvas);
 // Game Objects
 // ----------------------------------------------------------------------------------------------------------------------
 
-function Cycle(id, x, y, colour, controls, initialDirection) { 
+function Cycle(id, x, y, colour, controls, initialDirection, cpu) { 
 	this.alive = true;
+	this.cpu = cpu;
 	this.id = id; 
 	this.x = x; //Center
 	this.y = y; //Center
@@ -448,7 +449,8 @@ function initializeCycles() {
 	const cyclestarts = setCycleStarts();
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP);
-		cycles.push(new Cycle(i, cyclestarts[i][0], cyclestarts[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
+		let cpu = !getGamepad(i).exists;
+		cycles.push(new Cycle(i, cyclestarts[i][0], cyclestarts[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection, cpu));
 		// setColor(cycles[i]);
 		cycles[i].setHitbox(initialDirection, ORI.VERTICAL);
 	}
@@ -624,7 +626,7 @@ function movement(cycle) {
 	const gamepad = getGamepad(cycle.id);
 
 	// Assume CPU
-	if (cycle.id !== 0 && !gamepad.exists) {
+	if (cycle.id !== 0 && cycle.cpu) {
 		let collision = true;
 		let moveChance = 0.01;
 		while (collision) {
