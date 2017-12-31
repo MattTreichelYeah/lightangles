@@ -32,10 +32,11 @@ const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
 const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
 
 // Hard Game Rules
-const MAXPLAYERCOUNT = 16;
+const MAXPLAYERCOUNT = 30;
 
-function Theme(name, colour, background, backgroundAlt, text, textHighlight, image) {
+function Theme(name, colour, background, backgroundAlt, text, textHighlight, image, tag) {
 	this.NAME = name;
+	this.TAG = tag;
 	this.COLOUR = colour;
 	this.BACKGROUND = background;
 	this.BACKGROUNDALT = backgroundAlt;
@@ -45,13 +46,13 @@ function Theme(name, colour, background, backgroundAlt, text, textHighlight, ima
 	this.IMAGE = new Image();
 	this.IMAGE.src = image;
 }
-const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack2.png')", "url('img/bgTileBlack2alt.png')", "#FFFFFF", "#FF0000", "img/white.png");
-const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite2.png')", "url('img/bgTileWhite2alt.png')", "#000000", "#FF0000", "img/black.png");
+const BLACKTHEME = new Theme("Black", "#000000", "url('img/bgTileBlack2.png')", "url('img/bgTileBlack2alt.png')", "#FFFFFF", "#FF0000", "img/white.png", "");
+const WHITETHEME = new Theme("White", "#FFFFFF", "url('img/bgTileWhite2.png')", "url('img/bgTileWhite2alt.png')", "#000000", "#FF0000", "img/black.png", "alt");
 const THEMES = [BLACKTHEME, WHITETHEME];
 
 // External - Directly Changeable
 const OPTIONS = { 
-	PLAYERCOUNT: MAXPLAYERCOUNT/2,
+	PLAYERCOUNT: 8,
 	WINS: 5,
 	THEME: THEMES[0],
 	BOOST: true,
@@ -98,13 +99,28 @@ const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
 				"rgba(255,0,255,255)", //magenta
 				"rgba(119,119,119,255)", //grey
 				"rgba(255,165,255,255)", //pink
-				"rgba(255,223,119,255)", //beige
 				"rgba(119,119,0,255)", //olive
+				"rgba(255,223,119,255)", //beige
 				"rgba(0,119,0,255)", //green
-				"rgba(119,0,0,255)", //maroon
-				"rgba(0,119,119,255)", //teal
+				"rgba(255,119,127,255)", //salmon
+				"rgba(195,175,255,255)", //lavender
 				"rgba(119,0,119,255)", //purple
-				"rgba(165,165,165,255)"]; //silver
+				"rgba(165,165,165,255)", //silver
+				"rgba(133,255,133,255)", //pastelgreen
+				"rgba(0,119,119,255)", //teal
+				"rgba(255,80,0,255)", //oranger
+				"rgba(129,205,232,255)", //aqua
+				"rgba(190,0,0,255)", //darkred
+				"rgba(190,0,255,255)", //purpler
+				"rgba(0,180,255,255)", //blueish
+				"rgba(255,223,200,255)", //salmony
+				"rgba(119,0,0,255)", //maroon
+				"rgba(200,223,119,255)", //puke
+				"rgba(255,190,0,255)", //gold
+				"rgba(255,0,135,255)", //cherry
+				"rgba(0,190,0,255)", //greener
+				OPTIONS.THEME.TEXT, //white
+				];
 
 // Canvas doesn't output exact colour of image apparently, need to read the colour after drawn
 function setColor(cycle) {
@@ -133,7 +149,21 @@ const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
 				[49,50,51,52,53], //12345
 				[54,55,56,57,48], //67890
 				[90,88,67,86,66], //zxcvb
-				[78,77,188,190,191]]; //nm,./
+				[78,77,188,190,191], //nm,./
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[],
+				[]]; 
 
 // Dynamic based on OPTIONS.PLAYERCOUNT
 function setCycleStarts() {
@@ -376,7 +406,9 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 	this.xLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.CYCLELENGTH : PROPERTIES.CYCLEWIDTH);
 	this.yLength = ((this.orientation === ORI.HORIZONTAL) ? PROPERTIES.CYCLEWIDTH : PROPERTIES.CYCLELENGTH);
 	// Pixel Images used because anti-aliasing applied to drawn canvas rectangles
-	this.image = loader.images["cycle" + id];
+	let alt = (this.id === MAXPLAYERCOUNT - 1) ? OPTIONS.THEME.TAG : "";
+	this.image = loader.images["cycle" + id + alt];
+	// console.log(this.image.src)
 	// Turns is used to trace path and erase on death
 	this.turns = [[this.x, this.y]]; //Start Point
 
@@ -405,6 +437,7 @@ function Cycle(id, x, y, colour, controls, initialDirection) {
 function drawHitbox(cycle) {
 	// I am an awful person and am using the Hitbox as a boost display for no clear reason
 	cycleCtx.fillStyle = (cycle.boostcharge ? OPTIONS.THEME.TEXT : cycle.colour);
+	if (cycle.boostcharge && cycle.id === MAXPLAYERCOUNT - 1) cycleCtx.fillStyle = OPTIONS.THEME.TEXTALT;
 	cycleCtx.fillRect(cycle.xhb, cycle.yhb, cycle.xhbLength, cycle.yhbLength);
 }
 
@@ -415,7 +448,7 @@ function initializeCycles() {
 	for(let i = 0; i < OPTIONS.PLAYERCOUNT; i += 1) {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP);
 		cycles.push(new Cycle(i, cyclestarts[i][0], cyclestarts[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection));
-		setColor(cycles[i]);
+		// setColor(cycles[i]);
 		cycles[i].setHitbox(initialDirection, ORI.VERTICAL);
 	}
 };
@@ -852,7 +885,8 @@ function eraseTrail(cycle) {
 };
 
 function eraseCycle(cycle) {
-	const deathAnimation = loader.images["cycleDie" + cycle.id];
+	let alt = (cycle.id === MAXPLAYERCOUNT - 1) ? OPTIONS.THEME.TAG : "";
+	const deathAnimation = loader.images["cycleDie" + cycle.id + alt];
 	let i = 1;
 	const animationFrames = 6;
 	const drawDeath = setInterval(function() {
@@ -961,7 +995,14 @@ function render() {
 	//Cycle display
 	cycles.forEach(function(cycle) {
 		if (cycle.alive === true) { 
-			let colour = ((cycle.speed * cycle.boost > cycle.speed) ? OPTIONS.THEME.IMAGE : cycle.image);
+			let colour;
+			if (cycle.speed * cycle.boost > cycle.speed) {
+				if (cycle.id === MAXPLAYERCOUNT - 1) colour = loader.images["alt"];
+				else colour = OPTIONS.THEME.IMAGE;
+			} else {
+				colour = cycle.image;
+			}
+
 			cycleCtx.drawImage(colour, cycle.x - cycle.xLength/2, cycle.y - cycle.yLength/2, cycle.xLength, cycle.yLength);
 			if (OPTIONS.BOOST) drawHitbox(cycle);
 		}
@@ -1279,6 +1320,7 @@ function doOptionState(gamestate) {
 						OPTIONS[optionValue] = THEMES[mod(THEMES.indexOf(OPTIONS.THEME) + 1, THEMES.length)];
 						document.body.style.background = OPTIONS.THEME.COLOUR;
 						if (TITLEMUSICJAMMIN) document.getElementById("background").style.background = (BACKGROUNDJAMMIN) ? OPTIONS.THEME.BACKGROUND : OPTIONS.THEME.BACKGROUNDALT;
+						CYCLECOLOURS[MAXPLAYERCOUNT - 1] = OPTIONS.THEME.TEXT;
 					}
 					break;
 			}
@@ -1394,9 +1436,12 @@ function imageSources() {
 		sources.push("cycle" + i);
 		sources.push("cycleDie" + i);
 	}
+	sources.push("cycle" + (MAXPLAYERCOUNT - 1) + "alt");
+	sources.push("cycleDie" + (MAXPLAYERCOUNT - 1) + "alt");
 	sources.push("logo2.svg");
-	sources.push("black")
-	sources.push("white")
+	sources.push("black");
+	sources.push("white");
+	sources.push("alt");
 	sources.push("bgTileBlack2");
 	sources.push("bgTileBlack2alt");
 	sources.push("bgTileWhite2");	
