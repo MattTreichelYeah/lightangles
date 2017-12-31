@@ -1212,7 +1212,7 @@ function incrementImageScale(noBackgroundAnim = false) {
 				TITLEPOSITIONUP = false;
 				COLOURJAM = mod(COLOURJAM + 1, OPTIONS.PLAYERCOUNT);
 				if (!noBackgroundAnim) document.getElementById("background").style.opacity = 1;
-				doBackground();
+				if (!noBackgroundAnim) doBackground();
 			}
 		} else {
 			TITLEPOSITIONY -= 0.2 * gameMusic.playbackRate;
