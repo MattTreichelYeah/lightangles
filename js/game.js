@@ -394,6 +394,7 @@ body.appendChild(menuCanvas);
 function Cycle(id, x, y, colour, controls, initialDirection, cpu) { 
 	this.alive = true;
 	this.cpu = cpu;
+	this.cpuMoveTendency = Math.random() * (0.01 - 0.005) + 0.005; // Randomize tendency of turning
 	this.id = id; 
 	this.x = x; //Center
 	this.y = y; //Center
@@ -628,7 +629,7 @@ function movement(cycle) {
 	// Assume CPU
 	if (cycle.id !== 0 && cycle.cpu) {
 		let collision = true;
-		let moveChance = 0.01;
+		let moveChance = cycle.cpuMoveTendency;
 		while (collision) {
 			randomMove = Math.random();
 			if (moveChance * 0 < randomMove && randomMove < moveChance * 0 + moveChance) {
