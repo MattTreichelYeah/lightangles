@@ -902,6 +902,18 @@ function collisionCheck(cycle, fake = false) {
 					return true;
 				}
 			} 
+		} else {
+			// Death Piano Collision
+			const cyclexhbEdge = cycle.xhb + cycle.xhbLength;
+			if (cycle.xhb < (pianoCanvas.width / OPTIONS.PLAYERCOUNT * othercycle.id + pianoCanvas.width / OPTIONS.PLAYERCOUNT)
+			&& (pianoCanvas.width / OPTIONS.PLAYERCOUNT * othercycle.id) < cyclexhbEdge
+			&& (othercycle.boostcounter > (PROPERTIES.BOOSTTIME - 60 * 0.1) && othercycle.boostcounter < (PROPERTIES.BOOSTTIME + 60 * 0.1))) {
+				if (!fake) {
+					killCycle(cycle);
+				}
+				collision = true;
+				return true;
+			}
 		}
 	});
 	
@@ -969,6 +981,15 @@ function deathPiano(cycle) {
 	const keyboard = cycle.controls;
 	const gamepad = getGamepad(cycle.id);
 
+	// Testing playability
+	if (cycle.cpu && !cycle.alive) {
+		let pianoChance = 0.01;
+		randomMove = Math.random();
+		if (randomMove < pianoChance) {
+			gamepad.A = true;
+		}
+	}
+
 	if (keyboard[keyboard.length - 1] in keysDown || gamepad.A === true) {
 		if (cycle.boostcharge) cycle.boostcharge = false;
 	} // Technically this will cause the actual effect next cycle
@@ -983,7 +1004,6 @@ function deathPiano(cycle) {
 		colour = `${cycle.colour.slice(0, -4)}${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH, 0.1)})`;		
 	}
 
-	if (cycle.id === 0) console.log(colour)
 	pianoCtx.fillStyle = colour;
 	pianoCtx.fillRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
 }
@@ -1124,7 +1144,7 @@ function update() {
 		if (cycle.alive === true) {
 			movement(cycle);
 			drawTrail(cycle);
-			deathPiano(cycle);
+			// deathPiano(cycle);
 		} else {
 			deathPiano(cycle);
 		}
