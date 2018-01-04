@@ -581,7 +581,8 @@ function getGamepad(id) {
 						controls.Start = gamepad.buttons[9].pressed;
 						controls.Back = gamepad.buttons[8].pressed;
 						controls.A = gamepad.buttons[7].pressed || gamepad.buttons[5].pressed
-						controls.B = gamepad.buttons[6].pressed || gamepad.buttons[4].pressed;						
+						controls.B = gamepad.buttons[6].pressed || gamepad.buttons[4].pressed;
+						break;					
 					case CONTROLLERGAMECUBE:
 						controls.Up = gamepad.buttons[3].pressed || gamepad.buttons[8].pressed;
 						controls.Left = gamepad.buttons[1].pressed || gamepad.buttons[10].pressed;
