@@ -73,6 +73,8 @@ const PROPERTIES = {
 	CYCLEWIDTH: 10,
 	TRAILWIDTH: 4,
 	DISAPPEARTIME: 1000,
+	BOOSTTIME: 60 * 0.5,
+	BOOSTREFRESH: 60 * 3,
 	ADJUSTPLAYERCOUNT: function (playercount) {
 		if (playercount <= 8) {
 			this.TRAILWIDTH = 4;
@@ -382,6 +384,8 @@ function getContext(canvas) {
 
 const menuCanvas = createCanvas(true);
 const menuCtx = getContext(menuCanvas);
+const pianoCanvas = createCanvas();
+const pianoCtx = getContext(pianoCanvas);
 const cycleCanvas = createCanvas();
 const cycleCtx = getContext(cycleCanvas);
 const trailCanvas = createCanvas();
@@ -390,6 +394,7 @@ const trailCtx = getContext(trailCanvas);
 const body = document.body;
 // The layering is important
 // Cycles above their Trails and Menus above playfield
+body.appendChild(pianoCanvas);
 body.appendChild(trailCanvas);
 body.appendChild(cycleCanvas);
 body.appendChild(menuCanvas);
@@ -409,6 +414,7 @@ function Cycle(id, x, y, colour, controls, initialDirection, cpu) {
 	this.controls = controls; //Keyboard
 	this.boost = 1; //Multiplier
 	this.boostcharge = true; //Set to false to prevent spam
+	this.boostcounter = 0;
 	this.speed = PROPERTIES.CYCLESPEED;
 	this.direction = initialDirection;
 	this.directionPrev = initialDirection;
@@ -610,18 +616,25 @@ function getGamepad(id) {
 
 function activateBoost(cycle) {
 	if (OPTIONS.BOOST && cycle.boostcharge) {
-
 		boostSound.playSoundEffect();
 		cycle.boost = 2;
 		cycle.boostcharge = false;
-		// Implementation is bad because it will timeout during Pause
-		setTimeout(function() {
-			cycle.boost = 1;
-		}, 500);
-		setTimeout(function() {
-			cycle.boostcharge = true;
-		}, 3000);
 	}
+}
+
+function processBoost(cycle) {
+	if ((cycle.boostcounter === 0 && cycle.boostcharge === false) || cycle.boostcounter > 0) {
+		cycle.boostcounter += 1;
+	} 
+
+	if (cycle.boostcounter === PROPERTIES.BOOSTTIME) {
+		cycle.boost = 1;
+	}
+
+	if (cycle.boostcounter === PROPERTIES.BOOSTREFRESH) {
+		cycle.boostcharge = true;
+		cycle.boostcounter = 0;
+	} 
 }
 
 function movement(cycle) {
@@ -951,6 +964,30 @@ function checkTrailCollision(cycle, fake = false) {
 	return collision;
 }
 
+function deathPiano(cycle) {
+	// Get relevant controls
+	const keyboard = cycle.controls;
+	const gamepad = getGamepad(cycle.id);
+
+	if (keyboard[keyboard.length - 1] in keysDown || gamepad.A === true) {
+		if (cycle.boostcharge) cycle.boostcharge = false;
+	} // Technically this will cause the actual effect next cycle
+
+	pianoCtx.clearRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
+	let colour;
+	if (cycle.boostcounter === 0) {
+		colour = `${cycle.colour.slice(0, -4)}0.1)`;
+	} else if (cycle.boostcounter > 0 && cycle.boostcounter <= PROPERTIES.BOOSTTIME) {
+		colour = `${cycle.colour.slice(0, -4)}${cycle.boostcounter / PROPERTIES.BOOSTTIME})`;
+	} else {
+		colour = `${cycle.colour.slice(0, -4)}${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH, 0.1)})`;		
+	}
+
+	if (cycle.id === 0) console.log(colour)
+	pianoCtx.fillStyle = colour;
+	pianoCtx.fillRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
+}
+
 function checkWinner() {
 	let livingCycles = [];
 	cycles.forEach(function(cycle) {
@@ -1087,7 +1124,11 @@ function update() {
 		if (cycle.alive === true) {
 			movement(cycle);
 			drawTrail(cycle);
+			deathPiano(cycle);
+		} else {
+			deathPiano(cycle);
 		}
+		processBoost(cycle); //Used for boost & deathPiano
 	});
 	
 	// Must do Collision Check after all Movement
@@ -1515,6 +1556,7 @@ function doGameState(gamestate) {
 		if(!PAUSE) {
 			// Reset Cycles if new Round
 			if (RESTART) {
+				pianoCtx.clearCanvas(pianoCanvas);
 				trailCtx.clearCanvas(trailCanvas);
 				cycleCtx.clearCanvas(cycleCanvas);
 				initializeCycles();
