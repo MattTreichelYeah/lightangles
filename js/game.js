@@ -1003,7 +1003,7 @@ function deathPiano(cycle) {
 	} else if (cycle.boostcounter > 0 && cycle.boostcounter <= PROPERTIES.BOOSTTIME) {
 		colour = `rgba(255,255,255,${cycle.boostcounter / PROPERTIES.BOOSTTIME})`;
 	} else {
-		colour = `rgba(255,255,255,${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH, 0.1)})`;		
+		colour = `rgba(255,255,255,${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH * 4, 0.1)})`;		
 	}
 
 	pianoCtx.fillStyle = colour;
