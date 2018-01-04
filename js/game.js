@@ -97,35 +97,35 @@ const DISAPPEAR = {
 // This ultimately applies to just menu indicators
 // Scratch the above - this is used to avoid suicide on initial drawn trail,
 // and due to an canvas quirk have to be reassigned later to whatever the browser slightly adjusts the raw colour to (see following function)
-const CYCLECOLOURS = ["rgba(255,0,0,255)", //red
-				"rgba(0,81,255,255)", //blue
-				"rgba(255,223,0,255)", //yellow
-				"rgba(0,255,0,255)", //limegreen
-				"rgba(255,165,0,255)", //orange
-				"rgba(0,255,255,255)", //cyan
-				"rgba(255,0,255,255)", //magenta
-				"rgba(119,119,119,255)", //grey
-				"rgba(255,165,255,255)", //pink
-				"rgba(119,119,0,255)", //olive
-				"rgba(255,223,119,255)", //beige
-				"rgba(0,119,0,255)", //green
-				"rgba(255,119,127,255)", //salmon
-				"rgba(195,175,255,255)", //lavender
-				"rgba(119,0,119,255)", //purple
-				"rgba(165,165,165,255)", //silver
-				"rgba(133,255,133,255)", //pastelgreen
-				"rgba(0,119,119,255)", //teal
-				"rgba(255,80,0,255)", //oranger
-				"rgba(129,205,232,255)", //aqua
-				"rgba(190,0,0,255)", //darkred
-				"rgba(190,0,255,255)", //purpler
-				"rgba(0,180,255,255)", //blueish
-				"rgba(255,223,200,255)", //salmony
-				"rgba(119,0,0,255)", //maroon
-				"rgba(200,223,119,255)", //puke
-				"rgba(255,190,0,255)", //gold
-				"rgba(255,0,135,255)", //cherry
-				"rgba(0,190,0,255)", //greener
+const CYCLECOLOURS = ["rgba(255,0,0,1)", //red
+				"rgba(0,81,255,1)", //blue
+				"rgba(255,223,0,1)", //yellow
+				"rgba(0,255,0,1)", //limegreen
+				"rgba(255,165,0,1)", //orange
+				"rgba(0,255,255,1)", //cyan
+				"rgba(255,0,255,1)", //magenta
+				"rgba(119,119,119,1)", //grey
+				"rgba(255,165,255,1)", //pink
+				"rgba(119,119,0,1)", //olive
+				"rgba(255,223,119,1)", //beige
+				"rgba(0,119,0,1)", //green
+				"rgba(255,119,127,1)", //salmon
+				"rgba(195,175,255,1)", //lavender
+				"rgba(119,0,119,1)", //purple
+				"rgba(165,165,165,1)", //silver
+				"rgba(133,255,133,1)", //pastelgreen
+				"rgba(0,119,119,1)", //teal
+				"rgba(255,80,0,1)", //oranger
+				"rgba(129,205,232,1)", //aqua
+				"rgba(190,0,0,1)", //darkred
+				"rgba(190,0,255,1)", //purpler
+				"rgba(0,180,255,1)", //blueish
+				"rgba(255,223,200,1)", //salmony
+				"rgba(119,0,0,1)", //maroon
+				"rgba(200,223,119,1)", //puke
+				"rgba(255,190,0,1)", //gold
+				"rgba(255,0,135,1)", //cherry
+				"rgba(0,190,0,1)", //greener
 				OPTIONS.THEME.TEXT, //white
 				];
 
@@ -459,7 +459,7 @@ function initializeCycles() {
 		let initialDirection = ((i % 2 === 0) ? DIR.DOWN : DIR.UP);
 		let cpu = !getGamepad(i).exists;
 		cycles.push(new Cycle(i, cyclestarts[i][0], cyclestarts[i][1], CYCLECOLOURS[i], CYCLEKEYCONTROLS[i], initialDirection, cpu));
-		// setColor(cycles[i]);
+		setColor(cycles[i]);
 		cycles[i].setHitbox(initialDirection, ORI.VERTICAL);
 	}
 };
