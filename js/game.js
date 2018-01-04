@@ -75,6 +75,7 @@ const PROPERTIES = {
 	DISAPPEARTIME: 1000,
 	BOOSTTIME: 60 * 0.5,
 	BOOSTREFRESH: 60 * 3,
+	PIANOREFRESH: 60 * 9,
 	ADJUSTPLAYERCOUNT: function (playercount) {
 		if (playercount <= 8) {
 			this.TRAILWIDTH = 4;
@@ -631,7 +632,8 @@ function processBoost(cycle) {
 		cycle.boost = 1;
 	}
 
-	if (cycle.boostcounter === PROPERTIES.BOOSTREFRESH) {
+	if (cycle.alive && cycle.boostcounter === PROPERTIES.BOOSTREFRESH
+		|| !cycle.alive && cycle.boostcounter === PROPERTIES.PIANOREFRESH) {
 		cycle.boostcharge = true;
 		cycle.boostcounter = 0;
 	} 
@@ -997,11 +999,11 @@ function deathPiano(cycle) {
 	pianoCtx.clearRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
 	let colour;
 	if (cycle.boostcounter === 0) {
-		colour = `${cycle.colour.slice(0, -4)}0.1)`;
+		colour = `rgba(255,255,255,0.1)`;
 	} else if (cycle.boostcounter > 0 && cycle.boostcounter <= PROPERTIES.BOOSTTIME) {
-		colour = `${cycle.colour.slice(0, -4)}${cycle.boostcounter / PROPERTIES.BOOSTTIME})`;
+		colour = `rgba(255,255,255,${cycle.boostcounter / PROPERTIES.BOOSTTIME})`;
 	} else {
-		colour = `${cycle.colour.slice(0, -4)}${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH, 0.1)})`;		
+		colour = `rgba(255,255,255,${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH, 0.1)})`;		
 	}
 
 	pianoCtx.fillStyle = colour;
