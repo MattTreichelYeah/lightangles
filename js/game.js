@@ -27,6 +27,7 @@ const CONTROLLER360 = "45e-28e-Wireless 360 Controller";
 const CONTROLLER3602 = "045e-028e-Controller (XBOX 360 For Windows)";
 const CONTROLLER3603= "045e-02a1-Controller (Xbox 360 Wireless Receiver for Windows)";
 const CONTROLLER360WIRED = "45e-28e-Xbox 360 Wired Controller";
+const CONTROLLERPS4 = "054c-09cc-Wireless Controller";
 const CONTROLLERPS3 = "54c-268-PLAYSTATION(R)3 Controller";
 const CONTROLLERPS2 = "0810-0003-USB Gamepad ";
 const CONTROLLERWIIUPRO = "0079-1800-Mayflash WiiU Pro Game Controller Adapter";
@@ -38,7 +39,7 @@ const CONTROLLERJOYCONR = "057e-2007-Wireless Gamepad";
 const CONTROLLERJOYCONR2 = "57e-2007-Joy-Con (R)";
 const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
 const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
-const CONTROLLERGAMECUBE2 = "0079-1844-MAYFLASH GameCube Controller Adapter"
+const CONTROLLERGAMECUBE2 = "0079-1844-MAYFLASH GameCube Controller Adapter";
 
 // Hard Game Rules
 const MAXPLAYERCOUNT = 30;
@@ -561,6 +562,16 @@ function getGamepad(id) {
 						controls.Right = gamepad.buttons[1].pressed;
 						controls.Start = gamepad.buttons[7].pressed;
 						controls.Back = gamepad.buttons[6].pressed;
+						controls.A = gamepad.buttons[5].pressed;
+						controls.B = gamepad.buttons[4].pressed;
+						break;
+					case CONTROLLERPS4:
+						controls.Up = gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
+						controls.Left = gamepad.buttons[0].pressed || gamepad.axes[0] < -0.3;
+						controls.Down = gamepad.buttons[1].pressed || gamepad.axes[1] > 0.3;
+						controls.Right = gamepad.buttons[2].pressed || gamepad.axes[0] > 0.3;
+						controls.Start = gamepad.buttons[9].pressed;
+						controls.Back = gamepad.buttons[8].pressed;
 						controls.A = gamepad.buttons[5].pressed;
 						controls.B = gamepad.buttons[4].pressed;
 						break;
