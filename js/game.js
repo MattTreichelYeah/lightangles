@@ -38,6 +38,7 @@ const CONTROLLERJOYCONR = "057e-2007-Wireless Gamepad";
 const CONTROLLERJOYCONR2 = "57e-2007-Joy-Con (R)";
 const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
 const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
+const CONTROLLERGAMECUBE2 = "0079-1844-MAYFLASH GameCube Controller Adapter"
 
 // Hard Game Rules
 const MAXPLAYERCOUNT = 30;
@@ -590,6 +591,16 @@ function getGamepad(id) {
 						controls.Right = gamepad.buttons[2].pressed || gamepad.buttons[11].pressed;
 						controls.Start = gamepad.buttons[7].pressed;
 						controls.Back = gamepad.buttons[6].pressed;
+						controls.A = gamepad.buttons[5].pressed;
+						controls.B = gamepad.buttons[4].pressed;
+						break;	
+					case CONTROLLERGAMECUBE2:
+						controls.Up = gamepad.buttons[3].pressed || gamepad.buttons[12].pressed;
+						controls.Left = gamepad.buttons[2].pressed || gamepad.buttons[15].pressed;
+						controls.Down = gamepad.buttons[1].pressed || gamepad.buttons[14].pressed;
+						controls.Right = gamepad.buttons[0].pressed || gamepad.buttons[13].pressed;
+						controls.Start = gamepad.buttons[9].pressed;
+						controls.Back = gamepad.buttons[7].pressed;
 						controls.A = gamepad.buttons[5].pressed;
 						controls.B = gamepad.buttons[4].pressed;
 						break;					
