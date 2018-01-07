@@ -42,7 +42,7 @@ const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
 const CONTROLLERGAMECUBE2 = "0079-1844-MAYFLASH GameCube Controller Adapter";
 
 // Hard Game Rules
-const MAXPLAYERCOUNT = 30;
+const MAXPLAYERCOUNT = 32;
 
 function Theme(name, colour, background, backgroundAlt, text, textHighlight, image, tag) {
 	this.NAME = name;
@@ -128,6 +128,8 @@ const CYCLECOLOURS = ["rgba(255,0,0,1)", //red
 				"rgba(200,223,119,1)", //puke
 				"rgba(255,190,0,1)", //gold
 				"rgba(255,0,135,1)", //cherry
+				"rgba(149,255,210,1)", //glow
+				"rgba(255,196,135,1)", //paleorange
 				"rgba(0,190,0,1)", //greener
 				OPTIONS.THEME.TEXT, //white
 				];
@@ -160,6 +162,8 @@ const CYCLEKEYCONTROLS = [[87,65,83,68,69], //wasde
 				[54,55,56,57,48], //67890
 				[90,88,67,86,66], //zxcvb
 				[78,77,188,190,191], //nm,./
+				[],
+				[],
 				[],
 				[],
 				[],
