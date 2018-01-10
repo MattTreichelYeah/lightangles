@@ -1493,7 +1493,8 @@ function doOptionState(gamestate) {
 				case "number": 
 					// This is a dumb implementation because Win Count is limited by Player Count
 					OPTIONS[optionValue] = (left === true ? OPTIONS[optionValue] - 1 : OPTIONS[optionValue] + 1);
-					if (OPTIONS[optionValue] > MAXPLAYERCOUNT) OPTIONS[optionValue] = MAXPLAYERCOUNT;
+					if (optionValue === "PLAYERCOUNT" && OPTIONS[optionValue] > MAXPLAYERCOUNT) OPTIONS[optionValue] = MAXPLAYERCOUNT;
+					else if (optionValue === "WINS" && OPTIONS[optionValue] > 9) OPTIONS[optionValue] = 9;
 					else if (OPTIONS[optionValue] < 2) OPTIONS[optionValue] = 2;
 					break;
 				case "boolean": 
