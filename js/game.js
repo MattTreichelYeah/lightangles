@@ -63,7 +63,8 @@ const OPTIONS = {
 	WINS: 5,
 	THEME: THEMES[0],
 	BOOST: true,
-	DISAPPEARINGTRAILS: false
+	DISAPPEARINGTRAILS: false,
+	DEATHPIANO: false
 }
 
 // Internal - Constant or Indirectly Changeable
@@ -1146,9 +1147,8 @@ function update() {
 		if (cycle.alive === true) {
 			movement(cycle);
 			drawTrail(cycle);
-			// deathPiano(cycle);
 		} else {
-			deathPiano(cycle);
+			if (OPTIONS.DEATHPIANO) deathPiano(cycle);
 		}
 		processBoost(cycle); //Used for boost & deathPiano
 	});
@@ -1455,11 +1455,12 @@ function doOptionState(gamestate) {
 				"Wins: " + OPTIONS.WINS,
 				"Theme: " + OPTIONS.THEME.NAME,
 				"Boost: " + (OPTIONS.BOOST ? "Yes" : "No"),
-				"Disappearing Trails: " + (OPTIONS.DISAPPEARINGTRAILS ? "Yes" : "No")];
+				"Disappearing Trails: " + (OPTIONS.DISAPPEARINGTRAILS ? "Yes" : "No"),
+				"Death Piano: " + (OPTIONS.DEATHPIANO ? "Yes" : "No")];
 	for (let i = 0; i < optionmessages.length; i++) {
 		// Highlight value is updated by controls
 		menuCtx.fillStyle = (i === HIGHLIGHT ? OPTIONS.THEME.TEXTHIGHLIGHT : OPTIONS.THEME.TEXT);
-		menuCtx.fillTextCustom(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i));
+		menuCtx.fillTextCustom(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i) + 15);
 	}
 	
 	// Handle Option Controls
