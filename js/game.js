@@ -1046,6 +1046,9 @@ function killCycle(cycle) {
 	deathSound.playSoundEffect();
 	if (OPTIONS.PLAYERCOUNT !== 2) gameMusic.playbackRate += 0.5 / (OPTIONS.PLAYERCOUNT - 2);
 	cycle.alive = false;
+	cycle.boost = false;
+	cycle.boostcharge = true;
+	cycle.boostcounter = 0;
 	eraseCycle(cycle);
 	cycle.turns.push([cycle.x, cycle.y]);  // End Point
 	eraseTrail(cycle);
