@@ -80,7 +80,7 @@ const PROPERTIES = {
 	BOOSTTIME: 60 * 0.5,
 	PIANOTIME: 60 * 1,
 	BOOSTREFRESH: 60 * 3,
-	PIANOREFRESH: 60 * 9,
+	PIANOREFRESH: 60 * 6,
 	ADJUSTPLAYERCOUNT: function (playercount) {
 		if (playercount <= 8) {
 			this.TRAILWIDTH = 4;
