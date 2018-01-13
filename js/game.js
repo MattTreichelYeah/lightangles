@@ -66,7 +66,8 @@ const OPTIONS = {
 	WINS: 5,
 	THEME: THEMES[0],
 	BOOST: true,
-	DISAPPEARINGTRAILS: false
+	DISAPPEARINGTRAILS: false,
+	DEATHPIANO: false
 }
 
 // Internal - Constant or Indirectly Changeable
@@ -76,6 +77,10 @@ const PROPERTIES = {
 	CYCLEWIDTH: 10,
 	TRAILWIDTH: 4,
 	DISAPPEARTIME: 1000,
+	BOOSTTIME: 60 * 0.5,
+	PIANOTIME: 60 * 1,
+	BOOSTREFRESH: 60 * 3,
+	PIANOREFRESH: 60 * 9,
 	ADJUSTPLAYERCOUNT: function (playercount) {
 		if (playercount <= 8) {
 			this.TRAILWIDTH = 4;
@@ -389,6 +394,8 @@ function getContext(canvas) {
 
 const menuCanvas = createCanvas(true);
 const menuCtx = getContext(menuCanvas);
+const pianoCanvas = createCanvas();
+const pianoCtx = getContext(pianoCanvas);
 const cycleCanvas = createCanvas();
 const cycleCtx = getContext(cycleCanvas);
 const trailCanvas = createCanvas();
@@ -397,6 +404,7 @@ const trailCtx = getContext(trailCanvas);
 const body = document.body;
 // The layering is important
 // Cycles above their Trails and Menus above playfield
+body.appendChild(pianoCanvas);
 body.appendChild(trailCanvas);
 body.appendChild(cycleCanvas);
 body.appendChild(menuCanvas);
@@ -416,6 +424,7 @@ function Cycle(id, x, y, colour, controls, initialDirection, cpu) {
 	this.controls = controls; //Keyboard
 	this.boost = 1; //Multiplier
 	this.boostcharge = true; //Set to false to prevent spam
+	this.boostcounter = 0;
 	this.speed = PROPERTIES.CYCLESPEED;
 	this.direction = initialDirection;
 	this.directionPrev = initialDirection;
@@ -646,18 +655,26 @@ function getGamepad(id) {
 
 function activateBoost(cycle) {
 	if (OPTIONS.BOOST && cycle.boostcharge) {
-
 		boostSound.playSoundEffect();
 		cycle.boost = 2;
 		cycle.boostcharge = false;
-		// Implementation is bad because it will timeout during Pause
-		setTimeout(function() {
-			cycle.boost = 1;
-		}, 500);
-		setTimeout(function() {
-			cycle.boostcharge = true;
-		}, 3000);
 	}
+}
+
+function processBoost(cycle) {
+	if ((cycle.boostcounter === 0 && cycle.boostcharge === false) || cycle.boostcounter > 0) {
+		cycle.boostcounter += 1;
+	} 
+
+	if (cycle.boostcounter === PROPERTIES.BOOSTTIME) {
+		cycle.boost = 1;
+	}
+
+	if (cycle.alive && cycle.boostcounter === PROPERTIES.BOOSTREFRESH
+		|| !cycle.alive && cycle.boostcounter === PROPERTIES.PIANOREFRESH) {
+		cycle.boostcharge = true;
+		cycle.boostcounter = 0;
+	} 
 }
 
 function movement(cycle) {
@@ -925,6 +942,18 @@ function collisionCheck(cycle, fake = false) {
 					return true;
 				}
 			} 
+		} else {
+			// Death Piano Collision
+			const cyclexhbEdge = cycle.xhb + cycle.xhbLength;
+			if (cycle.xhb < (pianoCanvas.width / OPTIONS.PLAYERCOUNT * othercycle.id + pianoCanvas.width / OPTIONS.PLAYERCOUNT)
+			&& (pianoCanvas.width / OPTIONS.PLAYERCOUNT * othercycle.id) < cyclexhbEdge
+			&& (othercycle.boostcounter > (PROPERTIES.PIANOTIME - 60 * 0.1) && othercycle.boostcounter < (PROPERTIES.PIANOTIME + 60 * 0.1))) {
+				if (!fake) {
+					killCycle(cycle);
+				}
+				collision = true;
+				return true;
+			}
 		}
 	});
 	
@@ -987,6 +1016,43 @@ function checkTrailCollision(cycle, fake = false) {
 	return collision;
 }
 
+function deathPiano(cycle) {
+	// Get relevant controls
+	const keyboard = cycle.controls;
+	const gamepad = getGamepad(cycle.id);
+
+	// Testing playability
+	if (cycle.id !== 0 && cycle.cpu && !cycle.alive) {
+		let pianoChance = 0.01;
+		randomMove = Math.random();
+		if (randomMove < pianoChance) {
+			gamepad.A = true;
+		}
+	}
+
+	if (keyboard[keyboard.length - 1] in keysDown || gamepad.A === true) {
+		if (cycle.boostcharge) cycle.boostcharge = false;
+	} // Technically this will cause the actual effect next cycle
+
+	pianoCtx.clearRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
+	let colour;
+	if (cycle.boostcounter === 0 && cycle.boostcharge) { //ready
+		pianoCtx.globalAlpha = 0.1;
+	} else if (cycle.boostcounter === 0 && !cycle.boostcharge) { //notready
+		pianoCtx.globalAlpha = 0;		
+	} else if (cycle.boostcounter > 0 && cycle.boostcounter <= PROPERTIES.PIANOTIME * (3/4)) { //chargeup stage 1
+		pianoCtx.globalAlpha = cycle.boostcounter / PROPERTIES.PIANOTIME / 2;
+	} else if (cycle.boostcounter > PROPERTIES.PIANOTIME * (3/4) && cycle.boostcounter <= PROPERTIES.PIANOTIME) { //chargeup stage 2
+		pianoCtx.globalAlpha = Math.min(cycle.boostcounter / PROPERTIES.PIANOTIME, 1);
+	} else {
+		pianoCtx.globalAlpha = Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH * 2, 0); //chargedown
+	}
+
+	let image = (pianoCtx.globalAlpha === 0.1 ? cycle.image : OPTIONS.THEME.IMAGE);
+	if (pianoCtx.globalAlpha === 0.1 && cycle.id === MAXPLAYERCOUNT - 1) image = loader.images["alt"];
+	pianoCtx.drawImage(image, pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
+}
+
 function checkWinner() {
 	let livingCycles = [];
 	cycles.forEach(function(cycle) {
@@ -1022,6 +1088,9 @@ function killCycle(cycle) {
 	deathSound.playSoundEffect();
 	if (OPTIONS.PLAYERCOUNT !== 2) gameMusic.playbackRate += 0.5 / (OPTIONS.PLAYERCOUNT - 2);
 	cycle.alive = false;
+	cycle.boost = false;
+	cycle.boostcharge = true;
+	cycle.boostcounter = 0;
 	eraseCycle(cycle);
 	cycle.turns.push([cycle.x, cycle.y]);  // End Point
 	eraseTrail(cycle);
@@ -1123,7 +1192,10 @@ function update() {
 		if (cycle.alive === true) {
 			movement(cycle);
 			drawTrail(cycle);
+		} else {
+			if (OPTIONS.DEATHPIANO) deathPiano(cycle);
 		}
+		processBoost(cycle); //Used for boost & deathPiano
 	});
 	
 	// Must do Collision Check after all Movement
@@ -1167,9 +1239,16 @@ function render() {
 };
 
 function drawScore() {
-	// Score Display // Not sure why repeated
-	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillRect(0, SCOREHEIGHT - MENUBORDER, menuCanvas.width, MENUBORDER);
+	if (!OPTIONS.DEATHPIANO) {
+		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+		menuCtx.fillRect(0, SCOREHEIGHT - MENUBORDER, menuCanvas.width, MENUBORDER);
+	} else {
+		cycles.forEach((cycle) => {
+			let image = (!cycle.alive ? cycle.image : OPTIONS.THEME.IMAGE);
+			if (!cycle.alive && cycle.id === MAXPLAYERCOUNT - 1) image = loader.images["alt"];
+			menuCtx.drawImage(image, menuCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, SCOREHEIGHT - MENUBORDER, menuCanvas.width / OPTIONS.PLAYERCOUNT, MENUBORDER);
+		})
+	}
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.fillRect(0, 0, menuCanvas.width, SCOREHEIGHT - MENUBORDER);
 	menuCtx.font = `24px ${FONT}`;
@@ -1428,11 +1507,12 @@ function doOptionState(gamestate) {
 				"Wins: " + OPTIONS.WINS,
 				"Theme: " + OPTIONS.THEME.NAME,
 				"Boost: " + (OPTIONS.BOOST ? "Yes" : "No"),
-				"Disappearing Trails: " + (OPTIONS.DISAPPEARINGTRAILS ? "Yes" : "No")];
+				"Disappearing Trails: " + (OPTIONS.DISAPPEARINGTRAILS ? "Yes" : "No"),
+				"Death Piano: " + (OPTIONS.DEATHPIANO ? "Yes" : "No")];
 	for (let i = 0; i < optionmessages.length; i++) {
 		// Highlight value is updated by controls
 		menuCtx.fillStyle = (i === HIGHLIGHT ? OPTIONS.THEME.TEXTHIGHLIGHT : OPTIONS.THEME.TEXT);
-		menuCtx.fillTextCustom(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i));
+		menuCtx.fillTextCustom(optionmessages[i], menuCanvas.width/2, menuCanvas.height/2 - 30 * (optionmessages.length/2 - i) + 15);
 	}
 	
 	// Handle Option Controls
@@ -1466,7 +1546,8 @@ function doOptionState(gamestate) {
 				case "number": 
 					// This is a dumb implementation because Win Count is limited by Player Count
 					OPTIONS[optionValue] = (left === true ? OPTIONS[optionValue] - 1 : OPTIONS[optionValue] + 1);
-					if (OPTIONS[optionValue] > MAXPLAYERCOUNT) OPTIONS[optionValue] = MAXPLAYERCOUNT;
+					if (optionValue === "PLAYERCOUNT" && OPTIONS[optionValue] > MAXPLAYERCOUNT) OPTIONS[optionValue] = MAXPLAYERCOUNT;
+					else if (optionValue === "WINS" && OPTIONS[optionValue] > 9) OPTIONS[optionValue] = 9;
 					else if (OPTIONS[optionValue] < 2) OPTIONS[optionValue] = 2;
 					break;
 				case "boolean": 
@@ -1551,6 +1632,7 @@ function doGameState(gamestate) {
 		if(!PAUSE) {
 			// Reset Cycles if new Round
 			if (RESTART) {
+				pianoCtx.clearCanvas(pianoCanvas);
 				trailCtx.clearCanvas(trailCanvas);
 				cycleCtx.clearCanvas(cycleCanvas);
 				initializeCycles();
