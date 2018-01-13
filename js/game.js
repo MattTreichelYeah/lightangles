@@ -75,6 +75,7 @@ const PROPERTIES = {
 	TRAILWIDTH: 4,
 	DISAPPEARTIME: 1000,
 	BOOSTTIME: 60 * 0.5,
+	PIANOTIME: 60 * 1,
 	BOOSTREFRESH: 60 * 3,
 	PIANOREFRESH: 60 * 9,
 	ADJUSTPLAYERCOUNT: function (playercount) {
@@ -910,7 +911,7 @@ function collisionCheck(cycle, fake = false) {
 			const cyclexhbEdge = cycle.xhb + cycle.xhbLength;
 			if (cycle.xhb < (pianoCanvas.width / OPTIONS.PLAYERCOUNT * othercycle.id + pianoCanvas.width / OPTIONS.PLAYERCOUNT)
 			&& (pianoCanvas.width / OPTIONS.PLAYERCOUNT * othercycle.id) < cyclexhbEdge
-			&& (othercycle.boostcounter > (PROPERTIES.BOOSTTIME - 60 * 0.1) && othercycle.boostcounter < (PROPERTIES.BOOSTTIME + 60 * 0.1))) {
+			&& (othercycle.boostcounter > (PROPERTIES.PIANOTIME - 60 * 0.1) && othercycle.boostcounter < (PROPERTIES.PIANOTIME + 60 * 0.1))) {
 				if (!fake) {
 					killCycle(cycle);
 				}
@@ -999,16 +1000,21 @@ function deathPiano(cycle) {
 
 	pianoCtx.clearRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
 	let colour;
-	if (cycle.boostcounter === 0) {
-		colour = `rgba(255,255,255,0.1)`;
-	} else if (cycle.boostcounter > 0 && cycle.boostcounter <= PROPERTIES.BOOSTTIME) {
-		colour = `rgba(255,255,255,${cycle.boostcounter / PROPERTIES.BOOSTTIME})`;
+	if (cycle.boostcounter === 0 && cycle.boostcharge) { //ready
+		pianoCtx.globalAlpha = 0.1;
+	} else if (cycle.boostcounter === 0 && !cycle.boostcharge) { //notready
+		pianoCtx.globalAlpha = 0;		
+	} else if (cycle.boostcounter > 0 && cycle.boostcounter <= PROPERTIES.PIANOTIME * (3/4)) { //chargeup stage 1
+		pianoCtx.globalAlpha = cycle.boostcounter / PROPERTIES.PIANOTIME / 2;
+	} else if (cycle.boostcounter > PROPERTIES.PIANOTIME * (3/4) && cycle.boostcounter <= PROPERTIES.PIANOTIME) { //chargeup stage 2
+		pianoCtx.globalAlpha = Math.min(cycle.boostcounter / PROPERTIES.PIANOTIME, 1);
 	} else {
-		colour = `rgba(255,255,255,${Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH * 4, 0.1)})`;		
+		pianoCtx.globalAlpha = Math.max(1 - cycle.boostcounter / PROPERTIES.BOOSTREFRESH * 2, 0); //chargedown
 	}
 
-	pianoCtx.fillStyle = colour;
-	pianoCtx.fillRect(pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
+	let image = (pianoCtx.globalAlpha === 0.1 ? cycle.image : OPTIONS.THEME.IMAGE);
+	if (pianoCtx.globalAlpha === 0.1 && cycle.id === MAXPLAYERCOUNT - 1) image = loader.images["alt"];
+	pianoCtx.drawImage(image, pianoCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, 0, pianoCanvas.width / OPTIONS.PLAYERCOUNT, pianoCanvas.height);
 }
 
 function checkWinner() {
