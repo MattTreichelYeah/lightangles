@@ -985,7 +985,7 @@ function deathPiano(cycle) {
 	const gamepad = getGamepad(cycle.id);
 
 	// Testing playability
-	if (cycle.cpu && !cycle.alive) {
+	if (cycle.id !== 0 && cycle.cpu && !cycle.alive) {
 		let pianoChance = 0.01;
 		randomMove = Math.random();
 		if (randomMove < pianoChance) {
