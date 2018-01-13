@@ -1197,9 +1197,16 @@ function render() {
 };
 
 function drawScore() {
-	// Score Display // Not sure why repeated
-	menuCtx.fillStyle = OPTIONS.THEME.TEXT;
-	menuCtx.fillRect(0, SCOREHEIGHT - MENUBORDER, menuCanvas.width, MENUBORDER);
+	if (!OPTIONS.DEATHPIANO) {
+		menuCtx.fillStyle = OPTIONS.THEME.TEXT;
+		menuCtx.fillRect(0, SCOREHEIGHT - MENUBORDER, menuCanvas.width, MENUBORDER);
+	} else {
+		cycles.forEach((cycle) => {
+			let image = (!cycle.alive ? cycle.image : OPTIONS.THEME.IMAGE);
+			if (!cycle.alive && cycle.id === MAXPLAYERCOUNT - 1) image = loader.images["alt"];
+			menuCtx.drawImage(image, menuCanvas.width / OPTIONS.PLAYERCOUNT * cycle.id, SCOREHEIGHT - MENUBORDER, menuCanvas.width / OPTIONS.PLAYERCOUNT, MENUBORDER);
+		})
+	}
 	menuCtx.fillStyle = OPTIONS.THEME.COLOUR;
 	menuCtx.fillRect(0, 0, menuCanvas.width, SCOREHEIGHT - MENUBORDER);
 	menuCtx.font = `24px ${FONT}`;
