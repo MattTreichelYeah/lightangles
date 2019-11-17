@@ -43,6 +43,8 @@ const CONTROLLERSWITCHPRO = "057e-2009-Wireless Gamepad";
 const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
 const CONTROLLERGAMECUBE2 = "0079-1844-MAYFLASH GameCube Controller Adapter";
 
+const CONTROLLERERRORS = [];
+
 // Hard Game Rules
 const MAXPLAYERCOUNT = 32;
 
@@ -655,7 +657,10 @@ function getGamepad(id) {
 				controls.exists = true;
 
 			} catch (err) {
-				console.log(`${err}: Controller ${gamepad.index} ${gamepad.id} Unsupported :(`);
+				if (!CONTROLLERERRORS[id]) {
+					console.log(`${err}: Controller ${gamepad.index} "${gamepad.id}" Unsupported :(`);
+					CONTROLLERERRORS[id] = true;
+				}
 			}
 		}
 	}
