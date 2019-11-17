@@ -27,6 +27,7 @@ const CONTROLLER360 = "45e-28e-Wireless 360 Controller";
 const CONTROLLER3602 = "045e-028e-Controller (XBOX 360 For Windows)";
 const CONTROLLER3603= "045e-02a1-Controller (Xbox 360 Wireless Receiver for Windows)";
 const CONTROLLER360WIRED = "45e-28e-Xbox 360 Wired Controller";
+const CONTROLLERXB1 = "045e-02ea-Controller (Xbox One For Windows)";
 const CONTROLLERPS4 = "054c-09cc-Wireless Controller";
 const CONTROLLERPS3 = "54c-268-PLAYSTATION(R)3 Controller";
 const CONTROLLERPS2 = "0810-0003-USB Gamepad ";
@@ -38,6 +39,7 @@ const CONTROLLERJOYCONL3 = "Joy-Con (L) (Vendor: 057e Product: 2006)";
 const CONTROLLERJOYCONR = "057e-2007-Wireless Gamepad";
 const CONTROLLERJOYCONR2 = "57e-2007-Joy-Con (R)";
 const CONTROLLERJOYCONR3 = "Joy-Con (R) (Vendor: 057e Product: 2007)";
+const CONTROLLERSWITCHPRO = "057e-2009-Wireless Gamepad";
 const CONTROLLERGAMECUBE = "1234-bead-vJoy - Virtual Joystick";
 const CONTROLLERGAMECUBE2 = "0079-1844-MAYFLASH GameCube Controller Adapter";
 
@@ -545,6 +547,16 @@ function getGamepad(id) {
 						controls.A = gamepad.buttons[14].pressed;
 						controls.B = gamepad.buttons[15].pressed;
 						break;
+					case CONTROLLERSWITCHPRO:
+						controls.Up = gamepad.buttons[3].pressed;
+						controls.Left = gamepad.buttons[2].pressed;
+						controls.Down = gamepad.buttons[0].pressed;
+						controls.Right = gamepad.buttons[1].pressed;
+						controls.Start = gamepad.buttons[9].pressed;
+						controls.Back = gamepad.buttons[8].pressed;
+						controls.A = gamepad.buttons[5].pressed || gamepad.buttons[4].pressed;
+						controls.B = gamepad.buttons[6].pressed || gamepad.buttons[7].pressed;
+						break;
 					case CONTROLLERWIIUPRO:
 					case CONTROLLERWIIUPRO2:
 						controls.Up = gamepad.buttons[12].pressed || gamepad.buttons[3].pressed || gamepad.axes[1] < -0.3;
@@ -569,6 +581,7 @@ function getGamepad(id) {
 						break;
 					case CONTROLLER3602:
 					case CONTROLLER3603:
+					case CONTROLLERXB1:
 						controls.Up = gamepad.buttons[3].pressed;
 						controls.Left = gamepad.buttons[2].pressed;
 						controls.Down = gamepad.buttons[0].pressed;
